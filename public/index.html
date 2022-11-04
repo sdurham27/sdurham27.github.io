@@ -487,8 +487,7 @@
         account: account_id,
         visitor: visitor.slice(0, visitor.indexOf('@')), //  ->visitor9<-@account.com
         visitorId: visitor,
-        // testing capitalized 'Role' for customer
-        Role: role,
+        role: role,
       };
 
       if (!disablePendo) {
@@ -519,8 +518,7 @@
           pendo.initialize({
             visitor: {
               id: visitor || 'VISITOR-UNIQUE-ID',
-              // testing capitalized 'Role' for customer
-              Role: role || 'user',
+              role: role || 'user',
             },
             account: {
               id: account_id || 'ACCOUNT-UNIQUE-ID',
