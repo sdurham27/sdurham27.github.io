@@ -1,5 +1,8 @@
 const JIRA_DOMAIN  = 'buildops.atlassian.net';
 const JIRA_PROJECT = 'REPORTING';
+// After deploying worker.js, replace this with your actual worker URL.
+// Example: https://jira-proxy.your-subdomain.workers.dev
+const PROXY_URL    = 'https://jira-proxy.your-subdomain.workers.dev';
 
 // Load saved settings on page load
 window.addEventListener('DOMContentLoaded', () => {
@@ -59,7 +62,7 @@ document.getElementById('ticket-form').addEventListener('submit', async (e) => {
 
   try {
     const credentials = btoa(`${settings.email}:${settings.token}`);
-    const url = `https://${JIRA_DOMAIN}/rest/api/3/issue`;
+    const url = `${PROXY_URL}/rest/api/3/issue`;
 
     // Build metadata rows for the description
     const metaRows = [
