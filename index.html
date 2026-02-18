@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jira Ticket Creator</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div class="container">
+    <h1>Jira Ticket Creator</h1>
+
+    <!-- Settings -->
+    <details id="settings-section">
+      <summary>⚙️ Settings</summary>
+      <div class="settings-grid">
+        <label>Jira Domain
+          <input type="text" id="jira-domain" placeholder="yourcompany.atlassian.net" />
+        </label>
+        <label>Email
+          <input type="email" id="jira-email" placeholder="you@company.com" />
+        </label>
+        <label>API Token
+          <input type="password" id="jira-token" placeholder="Paste your API token here" />
+          <small><a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank">Get your API token →</a></small>
+        </label>
+        <label>Project Key
+          <input type="text" id="jira-project" placeholder="e.g. PROJ" />
+        </label>
+        <button type="button" id="save-settings">Save Settings</button>
+      </div>
+    </details>
+
+    <div id="settings-status"></div>
+
+    <!-- Ticket Form -->
+    <form id="ticket-form">
+      <label>Issue Type
+        <select id="issue-type">
+          <option value="Task">Task</option>
+          <option value="Bug">Bug</option>
+          <option value="Story">Story</option>
+          <option value="Epic">Epic</option>
+        </select>
+      </label>
+
+      <label>Summary <span class="required">*</span>
+        <input type="text" id="summary" placeholder="Short description of the ticket" required />
+      </label>
+
+      <label>Description
+        <textarea id="description" rows="6" placeholder="Full details, steps to reproduce, etc."></textarea>
+      </label>
+
+      <label>Priority
+        <select id="priority">
+          <option value="Medium">Medium</option>
+          <option value="Low">Low</option>
+          <option value="High">High</option>
+          <option value="Critical">Critical</option>
+        </select>
+      </label>
+
+      <button type="submit" id="submit-btn">Create Ticket</button>
+    </form>
+
+    <div id="result"></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
