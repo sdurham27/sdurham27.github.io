@@ -1,15 +1,16 @@
+const JIRA_DOMAIN  = 'buildops.atlassian.net';
+const JIRA_PROJECT = 'REPORTING';
+
 // Load saved settings on page load
 window.addEventListener('DOMContentLoaded', () => {
   const saved = JSON.parse(localStorage.getItem('jiraSettings') || '{}');
-  if (saved.domain)  document.getElementById('jira-domain').value = saved.domain;
-  if (saved.email)   document.getElementById('jira-email').value = saved.email;
-  if (saved.token)   document.getElementById('jira-token').value = saved.token;
-  if (saved.project) document.getElementById('jira-project').value = saved.project;
+  if (saved.email) document.getElementById('jira-email').value = saved.email;
+  if (saved.token) document.getElementById('jira-token').value = saved.token;
 
   // If settings exist, collapse the settings panel
-  if (saved.domain && saved.token) {
+  if (saved.email && saved.token) {
     document.getElementById('settings-section').removeAttribute('open');
-    showStatus('settings-status', `Settings loaded for ${saved.domain}`, 'success');
+    showStatus('settings-status', `Logged in as ${saved.email}`, 'success');
   } else {
     document.getElementById('settings-section').setAttribute('open', '');
   }
@@ -17,18 +18,16 @@ window.addEventListener('DOMContentLoaded', () => {
 
 // Save settings
 document.getElementById('save-settings').addEventListener('click', () => {
-  const domain  = document.getElementById('jira-domain').value.trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
-  const email   = document.getElementById('jira-email').value.trim();
-  const token   = document.getElementById('jira-token').value.trim();
-  const project = document.getElementById('jira-project').value.trim().toUpperCase();
+  const email = document.getElementById('jira-email').value.trim();
+  const token = document.getElementById('jira-token').value.trim();
 
-  if (!domain || !email || !token || !project) {
-    showStatus('settings-status', 'Please fill in all settings fields.', 'error');
+  if (!email || !token) {
+    showStatus('settings-status', 'Please enter your email and API token.', 'error');
     return;
   }
 
-  localStorage.setItem('jiraSettings', JSON.stringify({ domain, email, token, project }));
-  showStatus('settings-status', 'Settings saved!', 'success');
+  localStorage.setItem('jiraSettings', JSON.stringify({ email, token }));
+  showStatus('settings-status', `Logged in as ${email}`, 'success');
   document.getElementById('settings-section').removeAttribute('open');
 });
 
@@ -37,8 +36,8 @@ document.getElementById('ticket-form').addEventListener('submit', async (e) => {
   e.preventDefault();
 
   const settings = JSON.parse(localStorage.getItem('jiraSettings') || '{}');
-  if (!settings.domain || !settings.token) {
-    showStatus('result', 'Please fill in and save your settings first.', 'error');
+  if (!settings.email || !settings.token) {
+    showStatus('result', 'Please fill in and save your email and API token first.', 'error');
     document.getElementById('settings-section').setAttribute('open', '');
     return;
   }
@@ -55,11 +54,11 @@ document.getElementById('ticket-form').addEventListener('submit', async (e) => {
 
   try {
     const credentials = btoa(`${settings.email}:${settings.token}`);
-    const url = `https://${settings.domain}/rest/api/3/issue`;
+    const url = `https://${JIRA_DOMAIN}/rest/api/3/issue`;
 
     const body = {
       fields: {
-        project:   { key: settings.project },
+        project:   { key: JIRA_PROJECT },
         summary:   summary,
         issuetype: { name: issueType },
         priority:  { name: priority },
@@ -91,7 +90,7 @@ document.getElementById('ticket-form').addEventListener('submit', async (e) => {
     const data = await response.json();
 
     if (response.ok) {
-      const ticketUrl = `https://${settings.domain}/browse/${data.key}`;
+      const ticketUrl = `https://${JIRA_DOMAIN}/browse/${data.key}`;
       showStatus('result', `Ticket created! <a href="${ticketUrl}" target="_blank">${data.key} →</a>`, 'success');
       document.getElementById('ticket-form').reset();
     } else {
@@ -99,7 +98,7 @@ document.getElementById('ticket-form').addEventListener('submit', async (e) => {
       showStatus('result', `Error: ${message}`, 'error');
     }
   } catch (err) {
-    showStatus('result', `Request failed: ${err.message}. Check your domain and API token.`, 'error');
+    showStatus('result', `Request failed: ${err.message}. Check your email and API token.`, 'error');
   } finally {
     btn.disabled = false;
     btn.textContent = 'Create Ticket';
