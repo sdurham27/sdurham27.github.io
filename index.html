@@ -30,29 +30,68 @@
 
     <!-- Ticket Form -->
     <form id="ticket-form">
-      <label>Issue Type
-        <select id="issue-type">
-          <option value="Task">Task</option>
-          <option value="Bug">Bug</option>
-          <option value="Story">Story</option>
-          <option value="Epic">Epic</option>
-        </select>
-      </label>
 
       <label>Summary <span class="required">*</span>
         <input type="text" id="summary" placeholder="Short description of the ticket" required />
       </label>
 
-      <label>Description
-        <textarea id="description" rows="6" placeholder="Full details, steps to reproduce, etc."></textarea>
+      <label>Reporting Task Type <span class="required">*</span>
+        <select id="reporting-task-type" required>
+          <option value="" disabled selected>Select a task type…</option>
+          <option value="Create a new report">Create a new report</option>
+          <option value="Edit an existing report">Edit an existing report</option>
+          <option value="Create a new dashboard">Create a new dashboard</option>
+          <option value="Edit an existing dashboard">Edit an existing dashboard</option>
+          <option value="Discovery">Discovery</option>
+        </select>
       </label>
 
-      <label>Priority
-        <select id="priority">
-          <option value="Medium">Medium</option>
-          <option value="Low">Low</option>
-          <option value="High">High</option>
-          <option value="Critical">Critical</option>
+      <label>Description
+        <textarea id="description" rows="6" placeholder="Full details, context, requirements, etc."></textarea>
+      </label>
+
+      <label>Customer
+        <input type="text" id="customer" placeholder="Customer name" />
+      </label>
+
+      <label>Tenant ID
+        <input type="text" id="tenant-id" placeholder="Enter or paste Tenant ID" />
+      </label>
+
+      <label>Customer Segment
+        <select id="customer-segment">
+          <option value="" disabled selected>Select a segment…</option>
+          <option value="1 - Strategic">1 - Strategic</option>
+          <option value="2 - Enterprise">2 - Enterprise</option>
+          <option value="3 - Mid-Market">3 - Mid-Market</option>
+          <option value="4 - Corporate">4 - Corporate</option>
+        </select>
+      </label>
+
+      <label>Customer Status
+        <select id="customer-status">
+          <option value="" disabled selected>Select a status…</option>
+          <option value="1 - Onboarding">1 - Onboarding</option>
+          <option value="2 - Live">2 - Live</option>
+          <option value="3 - Pre-Sale">3 - Pre-Sale</option>
+        </select>
+      </label>
+
+      <label>PS Environment
+        <select id="ps-environment">
+          <option value="" disabled selected>Select an environment…</option>
+          <option value="Training">Training</option>
+          <option value="Live">Live</option>
+        </select>
+      </label>
+
+      <label>Department
+        <select id="department">
+          <option value="" disabled selected>Select a department…</option>
+          <option value="Customer Success">Customer Success</option>
+          <option value="Implementation">Implementation</option>
+          <option value="Support">Support</option>
+          <option value="EPD">EPD</option>
         </select>
       </label>
 

@@ -42,10 +42,15 @@ document.getElementById('ticket-form').addEventListener('submit', async (e) => {
     return;
   }
 
-  const summary     = document.getElementById('summary').value.trim();
-  const description = document.getElementById('description').value.trim();
-  const issueType   = document.getElementById('issue-type').value;
-  const priority    = document.getElementById('priority').value;
+  const summary         = document.getElementById('summary').value.trim();
+  const taskType        = document.getElementById('reporting-task-type').value;
+  const description     = document.getElementById('description').value.trim();
+  const customer        = document.getElementById('customer').value.trim();
+  const tenantId        = document.getElementById('tenant-id').value.trim();
+  const segment         = document.getElementById('customer-segment').value;
+  const custStatus      = document.getElementById('customer-status').value;
+  const psEnv           = document.getElementById('ps-environment').value;
+  const department      = document.getElementById('department').value;
 
   const btn = document.getElementById('submit-btn');
   btn.disabled = true;
@@ -56,23 +61,59 @@ document.getElementById('ticket-form').addEventListener('submit', async (e) => {
     const credentials = btoa(`${settings.email}:${settings.token}`);
     const url = `https://${JIRA_DOMAIN}/rest/api/3/issue`;
 
+    // Build metadata rows for the description
+    const metaRows = [
+      ['Reporting Task Type', taskType],
+      ['Customer',            customer],
+      ['Tenant ID',           tenantId],
+      ['Customer Segment',    segment],
+      ['Customer Status',     custStatus],
+      ['PS Environment',      psEnv],
+      ['Department',          department],
+    ].filter(([, v]) => v); // omit blank fields
+
+    // ADF content blocks
+    const adfContent = [];
+
+    if (metaRows.length) {
+      // Table for metadata
+      adfContent.push({
+        type: 'table',
+        attrs: { isNumberColumnEnabled: false, layout: 'default' },
+        content: metaRows.map(([label, value]) => ({
+          type: 'tableRow',
+          content: [
+            {
+              type: 'tableHeader',
+              attrs: {},
+              content: [{ type: 'paragraph', content: [{ type: 'text', text: label, marks: [{ type: 'strong' }] }] }]
+            },
+            {
+              type: 'tableCell',
+              attrs: {},
+              content: [{ type: 'paragraph', content: [{ type: 'text', text: value }] }]
+            }
+          ]
+        }))
+      });
+    }
+
+    if (description) {
+      adfContent.push({
+        type: 'paragraph',
+        content: [{ type: 'text', text: description }]
+      });
+    }
+
     const body = {
       fields: {
         project:   { key: JIRA_PROJECT },
         summary:   summary,
-        issuetype: { name: issueType },
-        priority:  { name: priority },
+        issuetype: { name: 'Task' },
         description: {
           type: 'doc',
           version: 1,
-          content: [
-            {
-              type: 'paragraph',
-              content: description
-                ? [{ type: 'text', text: description }]
-                : []
-            }
-          ]
+          content: adfContent.length ? adfContent : [{ type: 'paragraph', content: [] }]
         }
       }
     };
