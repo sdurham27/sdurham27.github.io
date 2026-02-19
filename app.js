@@ -117,7 +117,7 @@ document.getElementById('ticket-form').addEventListener('submit', async (e) => {
       },
       customfield_14840: { value: taskType },
       customfield_10297: customer,
-      customfield_11388: tenantId,
+      customfield_11388: tenantId ? [tenantId] : [],
       customfield_12016: { value: segment },
       customfield_12444: { value: custStatus },
       customfield_11785: { value: psEnv },
