@@ -1,8 +1,6 @@
 const JIRA_DOMAIN  = 'buildops.atlassian.net';
 const JIRA_PROJECT = 'REPORTING';
-// After deploying worker.js, replace this with your actual worker URL.
-// Example: https://jira-proxy.your-subdomain.workers.dev
-const PROXY_URL    = 'https://jira-proxy.your-subdomain.workers.dev';
+const PROXY_URL    = 'https://jira-proxy.shrimpwheels.workers.dev';
 
 // Load saved settings on page load
 window.addEventListener('DOMContentLoaded', () => {
