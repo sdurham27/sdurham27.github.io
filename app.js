@@ -106,18 +106,25 @@ document.getElementById('ticket-form').addEventListener('submit', async (e) => {
       });
     }
 
-    const body = {
-      fields: {
-        project:   { key: JIRA_PROJECT },
-        summary:   summary,
-        issuetype: { name: 'Task' },
-        description: {
-          type: 'doc',
-          version: 1,
-          content: adfContent.length ? adfContent : [{ type: 'paragraph', content: [] }]
-        }
-      }
+    const fields = {
+      project:   { key: JIRA_PROJECT },
+      summary:   summary,
+      issuetype: { name: 'Task' },
+      description: {
+        type: 'doc',
+        version: 1,
+        content: adfContent.length ? adfContent : [{ type: 'paragraph', content: [] }]
+      },
+      customfield_14840: { value: taskType },
+      customfield_10297: customer,
+      customfield_11388: tenantId,
+      customfield_12016: { value: segment },
+      customfield_12444: { value: custStatus },
+      customfield_11785: { value: psEnv },
+      customfield_10596: { value: department },
     };
+
+    const body = { fields };
 
     const response = await fetch(url, {
       method: 'POST',
