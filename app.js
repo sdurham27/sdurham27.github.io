@@ -149,6 +149,7 @@ document.getElementById('ticket-form').addEventListener('submit', async (e) => {
 
 function showStatus(id, message, type) {
   const el = document.getElementById(id);
+  el.style.display = '';
   el.innerHTML = message;
   el.className = type;
 }
