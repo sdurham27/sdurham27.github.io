@@ -1,0 +1,551 @@
+/* ============================================================
+   BuildOps Voice Assistant – Dark UI
+   ============================================================ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg:           #0d1117;
+  --surface:      #161b22;
+  --border:       #30363d;
+  --text:         #e6edf3;
+  --text-muted:   #8b949e;
+
+  /* Orb / state accent colors */
+  --idle-color:       #2563eb;
+  --idle-glow:        rgba(37, 99, 235, 0.35);
+  --listen-color:     #e63946;
+  --listen-glow:      rgba(230, 57, 70, 0.4);
+  --think-color:      #8b5cf6;
+  --think-glow:       rgba(139, 92, 246, 0.4);
+  --speak-color:      #10b981;
+  --speak-glow:       rgba(16, 185, 129, 0.4);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* ============================================================
+   App Shell
+   ============================================================ */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* ---- Header ---- */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 10;
+}
+
+.logo {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: var(--text);
+}
+
+.logo-sub {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.settings-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.2s, color 0.2s;
+  flex-shrink: 0;
+}
+
+.settings-btn:hover {
+  border-color: var(--idle-color);
+  color: var(--text);
+}
+
+/* ---- Settings Panel ---- */
+.settings-panel {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 20px 24px;
+  animation: slide-down 0.2s ease;
+}
+
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.settings-inner {
+  max-width: 520px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.settings-inner h3 {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.settings-inner label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.settings-inner label small {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.settings-inner input,
+.settings-inner select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-family: inherit;
+  padding: 8px 12px;
+  transition: border-color 0.2s;
+}
+
+.settings-inner input:focus,
+.settings-inner select:focus {
+  outline: none;
+  border-color: var(--idle-color);
+}
+
+.settings-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.settings-actions button {
+  background: var(--idle-color);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 18px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity 0.2s;
+}
+
+.settings-actions button:hover {
+  opacity: 0.85;
+}
+
+.settings-status {
+  font-size: 0.85rem;
+  min-height: 1em;
+}
+
+.settings-status.success {
+  color: var(--speak-color);
+}
+
+/* ============================================================
+   Main Content
+   ============================================================ */
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  gap: 28px;
+}
+
+/* ============================================================
+   Orb
+   ============================================================ */
+
+.orb-container {
+  width: 160px;
+  height: 160px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.orb {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* Expanding ring layers */
+.orb-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 1.5px solid transparent;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ring-1 { width: 100%;  height: 100%; }
+.ring-2 { width: 125%;  height: 125%; }
+.ring-3 { width: 150%;  height: 150%; }
+
+/* Central glowing core */
+.orb-core {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--idle-color);
+  box-shadow:
+    0 0 20px var(--idle-glow),
+    0 0 60px var(--idle-glow);
+  transition: background 0.4s ease, box-shadow 0.4s ease;
+}
+
+/* --- State: idle --- */
+.orb[data-state="idle"] .orb-core {
+  background: var(--idle-color);
+  box-shadow:
+    0 0 20px var(--idle-glow),
+    0 0 50px var(--idle-glow);
+}
+
+/* --- State: listening --- */
+.orb[data-state="listening"] .orb-core {
+  background: var(--listen-color);
+  box-shadow:
+    0 0 28px var(--listen-glow),
+    0 0 70px var(--listen-glow);
+}
+
+.orb[data-state="listening"] .ring-1 {
+  border-color: var(--listen-color);
+  animation: pulse-out 1.2s ease-out infinite;
+}
+.orb[data-state="listening"] .ring-2 {
+  border-color: var(--listen-color);
+  animation: pulse-out 1.2s ease-out 0.3s infinite;
+}
+.orb[data-state="listening"] .ring-3 {
+  border-color: var(--listen-color);
+  animation: pulse-out 1.2s ease-out 0.6s infinite;
+}
+
+/* --- State: thinking --- */
+.orb[data-state="thinking"] .orb-core {
+  background: var(--think-color);
+  box-shadow:
+    0 0 28px var(--think-glow),
+    0 0 70px var(--think-glow);
+  animation: breathe 1.6s ease-in-out infinite;
+}
+
+/* --- State: speaking --- */
+.orb[data-state="speaking"] .orb-core {
+  background: var(--speak-color);
+  box-shadow:
+    0 0 28px var(--speak-glow),
+    0 0 70px var(--speak-glow);
+}
+
+.orb[data-state="speaking"] .ring-1 {
+  border-color: var(--speak-color);
+  animation: speak-ring 0.7s ease-in-out infinite alternate;
+}
+.orb[data-state="speaking"] .ring-2 {
+  border-color: var(--speak-color);
+  animation: speak-ring 0.7s ease-in-out 0.1s infinite alternate;
+}
+
+/* ---- Animations ---- */
+
+@keyframes pulse-out {
+  0%   { opacity: 0.7; transform: translate(-50%, -50%) scale(0.9); }
+  100% { opacity: 0;   transform: translate(-50%, -50%) scale(1.2); }
+}
+
+@keyframes breathe {
+  0%, 100% {
+    box-shadow:
+      0 0 20px var(--think-glow),
+      0 0 50px var(--think-glow);
+  }
+  50% {
+    box-shadow:
+      0 0 40px var(--think-glow),
+      0 0 100px var(--think-glow);
+  }
+}
+
+@keyframes speak-ring {
+  from { opacity: 0.5; transform: translate(-50%, -50%) scale(1.0); }
+  to   { opacity: 0;   transform: translate(-50%, -50%) scale(1.25); }
+}
+
+/* ============================================================
+   Status Text
+   ============================================================ */
+
+.status-text {
+  font-size: 1.05rem;
+  color: var(--text-muted);
+  text-align: center;
+  letter-spacing: 0.2px;
+  min-height: 1.5em;
+  transition: color 0.3s;
+}
+
+/* ============================================================
+   Transcript & Response Cards
+   ============================================================ */
+
+.transcript-area,
+.response-area {
+  width: 100%;
+  max-width: 580px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: fade-in 0.25s ease;
+}
+
+.response-area {
+  border-color: rgba(37, 99, 235, 0.3);
+  background: rgba(37, 99, 235, 0.04);
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.area-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+
+.transcript-text {
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--text);
+  white-space: pre-wrap;
+}
+
+.response-text {
+  font-size: 1rem;
+  line-height: 1.65;
+  color: var(--text);
+  white-space: pre-wrap;
+}
+
+/* --- Follow-up prompts --- */
+.follow-ups {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.follow-up-label {
+  margin-bottom: 2px;
+}
+
+.follow-up-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.follow-up-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.875rem;
+  padding: 8px 12px;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+
+.follow-up-btn:hover {
+  border-color: var(--idle-color);
+  color: var(--text);
+  background: rgba(37, 99, 235, 0.06);
+}
+
+/* ============================================================
+   Error Area
+   ============================================================ */
+
+.error-area {
+  width: 100%;
+  max-width: 580px;
+  background: rgba(230, 57, 70, 0.08);
+  border: 1px solid rgba(230, 57, 70, 0.35);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 0.875rem;
+  color: #f87171;
+  line-height: 1.5;
+  animation: fade-in 0.2s ease;
+}
+
+/* ============================================================
+   Controls
+   ============================================================ */
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.mic-btn,
+.stop-btn {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  transition: transform 0.18s, box-shadow 0.18s, opacity 0.18s;
+}
+
+.mic-btn {
+  background: var(--idle-color);
+  color: #fff;
+  box-shadow: 0 4px 18px rgba(37, 99, 235, 0.45);
+}
+
+.mic-btn:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 28px rgba(37, 99, 235, 0.65);
+}
+
+.mic-btn:active {
+  transform: scale(0.95);
+}
+
+.mic-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.stop-btn {
+  background: #374151;
+  color: #d1d5db;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.stop-btn:hover {
+  background: #4b5563;
+  transform: scale(1.06);
+}
+
+.mic-btn svg,
+.stop-btn svg {
+  width: 28px;
+  height: 28px;
+  pointer-events: none;
+}
+
+/* ============================================================
+   Hint Text
+   ============================================================ */
+
+.hint-text {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  text-align: center;
+  opacity: 0.65;
+  max-width: 320px;
+  line-height: 1.5;
+}
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+
+@media (max-width: 480px) {
+  .main {
+    padding: 32px 16px;
+    gap: 22px;
+  }
+
+  .orb-container {
+    width: 130px;
+    height: 130px;
+  }
+
+  .orb-core {
+    width: 60px;
+    height: 60px;
+  }
+
+  .transcript-area,
+  .response-area,
+  .error-area {
+    border-radius: 8px;
+  }
+}
