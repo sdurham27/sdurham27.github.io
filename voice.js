@@ -211,7 +211,7 @@ async function askGlean(question) {
       method:  'POST',
       signal:  abortController.signal,
       headers: {
-        'Authorization':   `Bearer ${settings.gleanToken}`,
+        'Authorization':   `Basic ${btoa(settings.gleanToken + ':')}`,
         'Content-Type':    'application/json',
         'Accept':          'application/json',
         'X-Glean-Backend': backend,
