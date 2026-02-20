@@ -31,7 +31,8 @@ const stopBtn         = document.getElementById('stop-btn');
 const hintText        = document.getElementById('hint-text');
 const settingsToggle  = document.getElementById('settings-toggle');
 const settingsPanel   = document.getElementById('settings-panel');
-const gleanTokenInput = document.getElementById('glean-token');
+const gleanEmailInput   = document.getElementById('glean-email');
+const gleanTokenInput   = document.getElementById('glean-token');
 const gleanBackendInput = document.getElementById('glean-backend');
 const voiceSelect     = document.getElementById('voice-select');
 const saveSettingsBtn = document.getElementById('save-settings');
@@ -52,6 +53,7 @@ let abortController    = null;        // lets us cancel in-flight Glean fetch
 // ---------------------------------------------------------------------------
 function loadSettings() {
   const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+  gleanEmailInput.value   = saved.gleanEmail   || '';
   gleanTokenInput.value   = saved.gleanToken   || '';
   gleanBackendInput.value = saved.gleanBackend || DEFAULT_BACKEND;
   return saved;
@@ -63,6 +65,7 @@ function getSettings() {
 
 saveSettingsBtn.addEventListener('click', () => {
   const settings = {
+    gleanEmail:   gleanEmailInput.value.trim(),
     gleanToken:   gleanTokenInput.value.trim(),
     gleanBackend: gleanBackendInput.value.trim() || DEFAULT_BACKEND,
     voiceName:    voiceSelect.value,
@@ -215,6 +218,7 @@ async function askGlean(question) {
         'Content-Type':    'application/json',
         'Accept':          'application/json',
         'X-Glean-Backend': backend,
+        ...(settings.gleanEmail ? { 'X-Scio-Actas': settings.gleanEmail } : {}),
       },
       body: JSON.stringify(payload),
     });
