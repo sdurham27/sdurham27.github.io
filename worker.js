@@ -4,7 +4,7 @@ const ALLOWED_ORIGIN = 'https://sdurham27.github.io';
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin':  ALLOWED_ORIGIN,
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept, X-Glean-Backend, X-Scio-Actas',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept, X-Glean-Backend, X-Glean-ActAs',
 };
 
 export default {
@@ -29,7 +29,7 @@ export default {
       const gleanPath    = path.slice('/glean'.length);   // keep leading /
       const gleanUrl     = `https://${gleanBackend}${gleanPath}${url.search}`;
       const auth         = request.headers.get('Authorization') || '';
-      const actAs        = request.headers.get('X-Scio-Actas')  || '';
+      const actAs        = request.headers.get('X-Glean-ActAs') || '';
       const body         = request.method !== 'GET' ? await request.text() : undefined;
 
       const upstreamHeaders = {
@@ -37,7 +37,7 @@ export default {
         'Content-Type':  'application/json',
         'Accept':        'application/json',
       };
-      if (actAs) upstreamHeaders['X-Scio-Actas'] = actAs;
+      if (actAs) upstreamHeaders['X-Glean-ActAs'] = actAs;
 
       let upstream;
       try {
