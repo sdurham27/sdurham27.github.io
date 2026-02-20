@@ -39,11 +39,19 @@ export default {
       };
       if (actAs) upstreamHeaders['X-Scio-Actas'] = actAs;
 
-      const upstream = await fetch(gleanUrl, {
-        method: request.method,
-        headers: upstreamHeaders,
-        body,
-      });
+      let upstream;
+      try {
+        upstream = await fetch(gleanUrl, {
+          method: request.method,
+          headers: upstreamHeaders,
+          body,
+        });
+      } catch (err) {
+        return new Response(JSON.stringify({ error: 'Worker fetch failed', detail: String(err) }), {
+          status:  502,
+          headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+        });
+      }
 
       const responseBody = await upstream.text();
       return new Response(responseBody, {
