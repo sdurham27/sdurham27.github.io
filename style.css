@@ -172,3 +172,65 @@ button {
   color: #006644;
   font-weight: 600;
 }
+
+/* Ticket type selector card */
+.type-selector-card {
+  background: #fff;
+  border: 2px solid #0052cc;
+  border-radius: 8px;
+  padding: 20px 24px;
+  margin-bottom: 16px;
+}
+
+.type-label {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0052cc;
+}
+
+.type-label select {
+  margin-top: 8px;
+  font-size: 1rem;
+  border-color: #0052cc;
+}
+
+/* Per-type form sections */
+.ticket-section {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding-top: 4px;
+  border-top: 1px solid #dfe1e6;
+}
+
+/* Section hint / info box */
+.section-hint {
+  background: #fffae6;
+  border: 1px solid #ffe380;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  color: #172b4d;
+  line-height: 1.5;
+}
+
+/* Date and URL inputs */
+input[type="date"],
+input[type="url"] {
+  width: 100%;
+  padding: 8px 12px;
+  border: 2px solid #dfe1e6;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  color: #172b4d;
+  background: #fafbfc;
+  transition: border-color 0.15s;
+}
+
+input[type="date"]:focus,
+input[type="url"]:focus {
+  outline: none;
+  border-color: #0052cc;
+  background: #fff;
+}
