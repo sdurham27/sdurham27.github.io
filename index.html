@@ -3,12 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BuildOps Ticket Creator</title>
+  <title>Jira Ticket Creator</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+
   <div class="container">
-    <h1>BuildOps Ticket Creator</h1>
+    <h1>Jira Ticket Creator</h1>
 
     <!-- Settings -->
     <details id="settings-section">
@@ -27,239 +28,72 @@
 
     <div id="settings-status"></div>
 
-    <!-- Ticket Type Selector -->
-    <div class="type-selector-card">
-      <label class="type-label">What kind of ticket do you need? <span class="required">*</span>
-        <select id="ticket-type">
-          <option value="" disabled selected>Select a ticket type…</option>
-          <optgroup label="Reporting">
-            <option value="REPORTING">Reporting Request</option>
-          </optgroup>
-          <optgroup label="Implementation / Professional Services">
-            <option value="DT">Data Task (DT)</option>
-            <option value="SIP_QUESTION">SIP — Product Question</option>
-            <option value="SIP_FER">SIP — Feature Escalation Request</option>
-          </optgroup>
-          <optgroup label="Engineering">
-            <option value="DV">DevOps Request (DV)</option>
-            <option value="BUOP">Bug Report (BUOP)</option>
-          </optgroup>
-        </select>
-      </label>
-    </div>
-
-    <!-- Form -->
+    <!-- Ticket Form -->
     <form id="ticket-form">
 
-      <!-- Common: Summary -->
       <label>Summary <span class="required">*</span>
-        <input type="text" id="summary" placeholder="Short, specific description" required />
+        <input type="text" id="summary" placeholder="Short description of the ticket" required />
       </label>
 
-      <!-- ─── REPORTING ───────────────────────────────────────────── -->
-      <div class="ticket-section" id="section-REPORTING">
-        <label>Reporting Task Type <span class="required">*</span>
-          <select id="r-task-type">
-            <option value="" disabled selected>Select a task type…</option>
-            <option value="Create a new report">Create a new report</option>
-            <option value="Edit an existing report">Edit an existing report</option>
-            <option value="Create a new dashboard">Create a new dashboard</option>
-            <option value="Edit an existing dashboard">Edit an existing dashboard</option>
-            <option value="Discovery">Discovery</option>
-          </select>
-        </label>
-        <label>Description
-          <textarea id="r-description" rows="5" placeholder="Full details, context, requirements…"></textarea>
-        </label>
-        <label>Customer
-          <input type="text" id="r-customer" placeholder="Customer name" />
-        </label>
-        <label>Tenant ID
-          <input type="text" id="r-tenant-id" placeholder="Tenant ID" />
-        </label>
-        <label>Customer Segment
-          <select id="r-segment">
-            <option value="" disabled selected>Select a segment…</option>
-            <option value="1 - Strategic">1 - Strategic</option>
-            <option value="2 - Enterprise">2 - Enterprise</option>
-            <option value="3 - Mid-Market">3 - Mid-Market</option>
-            <option value="4 - Corporate">4 - Corporate</option>
-          </select>
-        </label>
-        <label>Customer Status
-          <select id="r-status">
-            <option value="" disabled selected>Select a status…</option>
-            <option value="1 - Onboarding">1 - Onboarding</option>
-            <option value="2 - Live">2 - Live</option>
-            <option value="3 - Pre-Sale">3 - Pre-Sale</option>
-          </select>
-        </label>
-        <label>PS Environment
-          <select id="r-env">
-            <option value="" disabled selected>Select an environment…</option>
-            <option value="Training">Training</option>
-            <option value="Live">Live</option>
-          </select>
-        </label>
-        <label>Department
-          <select id="r-dept">
-            <option value="" disabled selected>Select a department…</option>
-            <option value="Customer Success">Customer Success</option>
-            <option value="Implementation">Implementation</option>
-            <option value="Support">Support</option>
-            <option value="EPD">EPD</option>
-          </select>
-        </label>
-      </div>
+      <label>Reporting Task Type <span class="required">*</span>
+        <select id="reporting-task-type" required>
+          <option value="" disabled selected>Select a task type…</option>
+          <option value="Create a new report">Create a new report</option>
+          <option value="Edit an existing report">Edit an existing report</option>
+          <option value="Create a new dashboard">Create a new dashboard</option>
+          <option value="Edit an existing dashboard">Edit an existing dashboard</option>
+          <option value="Discovery">Discovery</option>
+        </select>
+      </label>
 
-      <!-- ─── DATA TASK (DT) ──────────────────────────────────────── -->
-      <div class="ticket-section" id="section-DT">
-        <label>Customer
-          <input type="text" id="dt-customer" placeholder="Customer name" />
-        </label>
-        <label>Tenant ID
-          <input type="text" id="dt-tenant-id" placeholder="Tenant ID" />
-        </label>
-        <label>Customer Segment
-          <select id="dt-segment">
-            <option value="" disabled selected>Select a segment…</option>
-            <option value="1 - Strategic">1 - Strategic</option>
-            <option value="2 - Enterprise">2 - Enterprise</option>
-            <option value="3 - Mid-Market">3 - Mid-Market</option>
-            <option value="4 - Corporate">4 - Corporate</option>
-          </select>
-        </label>
-        <label>Data Task Type <span class="required">*</span>
-          <select id="dt-task-type">
-            <option value="" disabled selected>Select a type…</option>
-            <option value="Import">Import</option>
-            <option value="Update Data">Update Data</option>
-            <option value="Delete Data">Delete Data</option>
-            <option value="Full ETL">Full ETL</option>
-            <option value="Discovery">Discovery</option>
-          </select>
-        </label>
-        <label>Employee Count
-          <select id="dt-employee-count">
-            <option value="" disabled selected>Select a range…</option>
-            <option value="Low">Low (1–125)</option>
-            <option value="Medium">Medium (126–250)</option>
-            <option value="High">High (251+)</option>
-          </select>
-        </label>
-        <label>Business Impact <span class="required">*</span>
-          <select id="dt-priority">
-            <option value="" disabled selected>Select impact…</option>
-            <option value="P1">P1 — All customers blocked</option>
-            <option value="P2">P2 — Numerous customers blocked</option>
-            <option value="P3">P3 — Limited customers blocked</option>
-            <option value="P4">P4 — Workarounds exist</option>
-            <option value="P5">P5 — Nice to have</option>
-          </select>
-        </label>
-        <label>Urgency <span class="required">*</span>
-          <select id="dt-urgency">
-            <option value="" disabled selected>Select urgency…</option>
-            <option value="2-4 Weeks">2–4 Weeks</option>
-            <option value="1 Week">1 Week</option>
-            <option value="1 Day">1 Day</option>
-          </select>
-        </label>
-        <label>Customer Delivery Date
-          <input type="date" id="dt-delivery-date" />
-        </label>
-        <label>Description <span class="required">*</span>
-          <textarea id="dt-description" rows="6" placeholder="Detailed instructions for the data team — what needs to be done AND the business objective."></textarea>
-        </label>
-      </div>
+      <label>Description
+        <textarea id="description" rows="6" placeholder="Full details, context, requirements, etc."></textarea>
+      </label>
 
-      <!-- ─── SIP ─────────────────────────────────────────────────── -->
-      <div class="ticket-section" id="section-SIP">
-        <div class="section-hint">
-          <strong>SIP is the last step, not the first.</strong> You must have already reviewed docs, asked OpsGPT/Glean, and validated internally before submitting. Incomplete tickets will be returned.
-        </div>
-        <label>Customer
-          <input type="text" id="sip-customer" placeholder="Customer name" />
-        </label>
-        <label>Problem Statement <span class="required">*</span>
-          <textarea id="sip-problem" rows="4" placeholder="Clear description of the problem or feature need"></textarea>
-        </label>
-        <label>Customer Context <span class="required">*</span>
-          <textarea id="sip-context" rows="3" placeholder="Who is the customer, what are they trying to do, why does it matter?"></textarea>
-        </label>
-        <label>Impact &amp; Urgency <span class="required">*</span>
-          <textarea id="sip-impact" rows="3" placeholder="Revenue/churn risk, go-live dependency, strategic importance…"></textarea>
-        </label>
-        <label>What Has Already Been Tried <span class="required">*</span>
-          <textarea id="sip-tried" rows="3" placeholder="Docs reviewed, OpsGPT/Glean queries, internal team validation…"></textarea>
-        </label>
-        <label>Reference Document / Confluence Link
-          <input type="url" id="sip-ref-link" placeholder="https://buildops.atlassian.net/wiki/…" />
-        </label>
-      </div>
+      <label>Customer
+        <input type="text" id="customer" placeholder="Customer name" />
+      </label>
 
-      <!-- ─── DEVOPS (DV) ──────────────────────────────────────────── -->
-      <div class="ticket-section" id="section-DV">
-        <div class="section-hint">
-          Provide as much detail as possible — incomplete tickets will be returned. You can never give too much context.
-        </div>
-        <label>Ticket Type
-          <select id="dv-ticket-type">
-            <option value="" disabled selected>Select a type…</option>
-            <option value="Planned">Planned</option>
-            <option value="Non-Planned">Non-Planned</option>
-          </select>
-        </label>
-        <label>Details / Description <span class="required">*</span>
-          <textarea id="dv-description" rows="7" placeholder="All context, requirements, and specs…"></textarea>
-        </label>
-      </div>
+      <label>Tenant ID
+        <input type="text" id="tenant-id" placeholder="Enter or paste Tenant ID" />
+      </label>
 
-      <!-- ─── BUG (BUOP) ───────────────────────────────────────────── -->
-      <div class="ticket-section" id="section-BUOP">
-        <div class="section-hint">
-          Summary must clearly state the <strong>module</strong>, <strong>screen</strong>, and <strong>type of problem</strong>. Avoid vague words like "issue" or "problem".
-        </div>
-        <label>Squad
-          <input type="text" id="buop-squad" placeholder="e.g. Dispatch, Pricebook, Reporting…" />
-        </label>
-        <label>Severity
-          <select id="buop-severity">
-            <option value="" disabled selected>Select severity…</option>
-            <option value="Critical">Critical</option>
-            <option value="High">High</option>
-            <option value="Medium">Medium</option>
-            <option value="Low">Low</option>
-          </select>
-        </label>
-        <label>Priority
-          <select id="buop-priority">
-            <option value="" disabled selected>Select priority…</option>
-            <option value="P1">P1</option>
-            <option value="P2">P2</option>
-            <option value="P3">P3</option>
-            <option value="P4">P4</option>
-          </select>
-        </label>
-        <label>Tenant Name
-          <input type="text" id="buop-tenant-name" placeholder="Tenant / customer name" />
-        </label>
-        <label>Tenant ID
-          <input type="text" id="buop-tenant-id" placeholder="Tenant ID" />
-        </label>
-        <label>Issue Description <span class="required">*</span>
-          <textarea id="buop-issue-desc" rows="3" placeholder="Short summary of the problem"></textarea>
-        </label>
-        <label>Steps to Reproduce <span class="required">*</span>
-          <textarea id="buop-steps" rows="5" placeholder="1. Go to…&#10;2. Click…&#10;3. Observe…"></textarea>
-        </label>
-        <label>Expected Behaviour <span class="required">*</span>
-          <textarea id="buop-expected" rows="3" placeholder="What should happen"></textarea>
-        </label>
-        <label>Actual Behaviour <span class="required">*</span>
-          <textarea id="buop-actual" rows="3" placeholder="What actually happens, including any errors thrown"></textarea>
-        </label>
-      </div>
+      <label>Customer Segment
+        <select id="customer-segment">
+          <option value="" disabled selected>Select a segment…</option>
+          <option value="1 - Strategic">1 - Strategic</option>
+          <option value="2 - Enterprise">2 - Enterprise</option>
+          <option value="3 - Mid-Market">3 - Mid-Market</option>
+          <option value="4 - Corporate">4 - Corporate</option>
+        </select>
+      </label>
+
+      <label>Customer Status
+        <select id="customer-status">
+          <option value="" disabled selected>Select a status…</option>
+          <option value="1 - Onboarding">1 - Onboarding</option>
+          <option value="2 - Live">2 - Live</option>
+          <option value="3 - Pre-Sale">3 - Pre-Sale</option>
+        </select>
+      </label>
+
+      <label>PS Environment
+        <select id="ps-environment">
+          <option value="" disabled selected>Select an environment…</option>
+          <option value="Training">Training</option>
+          <option value="Live">Live</option>
+        </select>
+      </label>
+
+      <label>Department
+        <select id="department">
+          <option value="" disabled selected>Select a department…</option>
+          <option value="Customer Success">Customer Success</option>
+          <option value="Implementation">Implementation</option>
+          <option value="Support">Support</option>
+          <option value="EPD">EPD</option>
+        </select>
+      </label>
 
       <button type="submit" id="submit-btn">Create Ticket</button>
     </form>
