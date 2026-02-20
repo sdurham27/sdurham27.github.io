@@ -207,7 +207,7 @@ async function askGlean(question) {
   abortController = new AbortController();
 
   try {
-    const res = await fetch(`${PROXY_URL}/glean/api/v1/chat`, {
+    const res = await fetch(`${PROXY_URL}/glean/rest/api/v1/chat`, {
       method:  'POST',
       signal:  abortController.signal,
       headers: {

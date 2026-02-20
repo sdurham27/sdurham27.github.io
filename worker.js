@@ -22,7 +22,7 @@ export default {
     //
     // The caller passes the Glean backend hostname via X-Glean-Backend so
     // the worker can forward to the right tenant without hardcoding it.
-    // Example: /glean/api/v1/chat  →  https://buildops-be.glean.com/api/v1/chat
+    // Example: /glean/rest/api/v1/chat  →  https://buildops-be.glean.com/rest/api/v1/chat
     // -------------------------------------------------------------------
     if (path.startsWith('/glean/')) {
       const gleanBackend = request.headers.get('X-Glean-Backend') || 'buildops-be.glean.com';
