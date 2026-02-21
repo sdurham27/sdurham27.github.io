@@ -198,7 +198,7 @@ async function askGlean(question) {
         fragments: [{ text: question }],
       },
     ],
-    stream:    false,
+    stream:    true,
     saveChat:  false,
   };
 
@@ -230,38 +230,69 @@ async function askGlean(question) {
       throw new Error(`Glean returned ${res.status}: ${detail}`);
     }
 
-    const data = await res.json();
+    // Read the NDJSON stream: Glean sends one JSON object per line.
+    // Each chunk is a cumulative snapshot of the response so far, so we
+    // display the latest text immediately and speak after the stream ends.
+    const reader  = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer    = '';
+    let lastData  = null;
+    let lastText  = '';
 
-    // Persist session for follow-up questions
-    if (data.chatSessionTrackingToken) {
-      chatSessionToken = data.chatSessionTrackingToken;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();   // keep any partial line for the next chunk
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        try {
+          const chunk = JSON.parse(trimmed);
+          lastData = chunk;
+
+          // Extract the latest AI text from this chunk
+          const msgs   = chunk.messages || [];
+          const aiMsg  = msgs.slice().reverse().find(m => m.author === 'GLEAN_AI')
+                      || msgs[msgs.length - 1];
+          if (aiMsg) {
+            const chunkText = (aiMsg.fragments || [])
+              .filter(f => typeof f.text === 'string')
+              .map(f => f.text)
+              .join(' ')
+              .trim();
+            if (chunkText) {
+              lastText = chunkText;
+              responseText.textContent = lastText;
+              responseArea.hidden = false;
+            }
+          }
+        } catch (_) { /* partial / non-JSON line — skip */ }
+      }
     }
 
-    // Extract the AI reply (last GLEAN_AI message, or last message as fallback)
-    const messages  = data.messages || [];
-    const aiMessage = messages.slice().reverse().find(m => m.author === 'GLEAN_AI')
-                   || messages[messages.length - 1];
-
-    if (!aiMessage) {
+    if (!lastData) {
       throw new Error('Glean returned no response. Check your token and backend URL.');
     }
-
-    const rawText = (aiMessage.fragments || [])
-      .filter(f => typeof f.text === 'string')
-      .map(f => f.text)
-      .join(' ')
-      .trim();
-
-    if (!rawText) {
+    if (!lastText) {
       throw new Error('Glean response was empty.');
     }
 
-    // Show the response text (raw markdown is fine for display)
-    responseText.textContent = rawText;
-    responseArea.hidden      = false;
+    // Persist session for follow-up questions
+    if (lastData.chatSessionTrackingToken) {
+      chatSessionToken = lastData.chatSessionTrackingToken;
+    }
 
-    // Show suggested follow-up prompts if provided
-    const prompts = aiMessage.followUpPrompts || data.followUpPrompts || [];
+    // Show suggested follow-up prompts from final chunk
+    const finalMsgs   = lastData.messages || [];
+    const finalAiMsg  = finalMsgs.slice().reverse().find(m => m.author === 'GLEAN_AI')
+                     || finalMsgs[finalMsgs.length - 1];
+    const prompts = (finalAiMsg && finalAiMsg.followUpPrompts)
+                 || lastData.followUpPrompts
+                 || [];
     if (prompts.length > 0) {
       followUpList.innerHTML = '';
       prompts.slice(0, 3).forEach(p => {
@@ -284,8 +315,8 @@ async function askGlean(question) {
       followUps.hidden = true;
     }
 
-    // Strip markdown for clean text-to-speech
-    speak(stripMarkdown(rawText));
+    // Strip markdown for clean text-to-speech (speak full answer at the end)
+    speak(stripMarkdown(lastText));
 
   } catch (err) {
     if (err.name === 'AbortError') return;   // user cancelled

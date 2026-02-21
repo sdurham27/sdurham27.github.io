@@ -53,10 +53,12 @@ export default {
         });
       }
 
-      const responseBody = await upstream.text();
-      return new Response(responseBody, {
+      // Pass the body through as a stream so the browser receives chunks
+      // as Glean generates them rather than waiting for the full response.
+      const contentType = upstream.headers.get('content-type') || 'application/json';
+      return new Response(upstream.body, {
         status:  upstream.status,
-        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+        headers: { ...CORS_HEADERS, 'Content-Type': contentType },
       });
     }
 
