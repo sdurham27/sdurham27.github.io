@@ -8,13 +8,13 @@ Retrieves and summarizes Jira tickets relevant to you — either your full workl
 
 ---
 
-## Input Field (Glean Agent Starter Variable)
+## Input Field
 
-Add the following optional fillable field to the agent configuration:
+Add the following optional fillable field to the agent configuration (Input Form trigger):
 
-| Field Label | Variable Name | Type | Placeholder Text | Required |
+| Field Label | Reference Name | Field Type | Placeholder Text | Required |
 |---|---|---|---|---|
-| Ticket Numbers (optional) | `{{ticket_ids}}` | Short text | e.g. PROJ-1234, ENG-56, SUPPORT-789 | No |
+| Ticket Numbers (optional) | `[[ticket_ids]]` | Text | e.g. PROJ-1234, ENG-56, SUPPORT-789 | No |
 
 > **How it works:** If the user fills in one or more ticket IDs (comma-separated), the agent looks up only those tickets. If the field is left blank, the agent runs a full digest of all tickets relevant to the user.
 
@@ -32,7 +32,7 @@ You operate in one of two modes depending on user input:
 
 #### Mode 1: Specific Ticket Lookup
 
-**Triggered when:** The user provides one or more ticket IDs (e.g., `PROJ-1234` or `PROJ-1234, ENG-56, SUPPORT-789`), either via the `{{ticket_ids}}` input field or directly in their message.
+**Triggered when:** The user provides one or more ticket IDs (e.g., `PROJ-1234` or `PROJ-1234, ENG-56, SUPPORT-789`), either via the `[[ticket_ids]]` input field or directly in their message.
 
 When ticket IDs are provided:
 1. Parse the input and split on commas to get the list of ticket IDs — trim any whitespace from each
@@ -45,7 +45,7 @@ When ticket IDs are provided:
 
 #### Mode 2: Full Workload Digest
 
-**Triggered when:** No ticket ID is provided (the `{{ticket_id}}` field is blank) or the user asks a general question such as "what are my tickets?", "show me my Jira", "what's on my plate?", or "what tickets am I CC'd on?"
+**Triggered when:** No ticket ID is provided (the `[[ticket_ids]]` field is blank) or the user asks a general question such as "what are my tickets?", "show me my Jira", "what's on my plate?", or "what tickets am I CC'd on?"
 
 When running a full digest:
 
@@ -174,7 +174,7 @@ When one ticket is provided:
 issue = "PROJ-1234"
 ```
 
-When multiple tickets are provided (parse `{{ticket_ids}}` and expand the list):
+When multiple tickets are provided (parse `[[ticket_ids]]` and expand the list):
 ```jql
 issue in ("PROJ-1234", "ENG-56", "SUPPORT-789")
 ```
