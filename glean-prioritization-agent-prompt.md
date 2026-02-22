@@ -35,126 +35,140 @@ This agent tracks exactly two fields. No other fields are considered "prioritiza
 
 ---
 
-## Input Variables
-
-| Field Label | Variable | Placeholder | Default |
-|---|---|---|---|
-| Time Window | `{{time_window}}` | e.g. `24h`, `7d`, `2w` | `24h` |
-| Scope | `{{scope}}` | `mine`, `all`, or a project key | `mine` |
-| Change Direction | `{{direction}}` | `escalations`, `de-escalations`, `all` | `all` |
+## Trigger Type
+**Input Form** — displays a form before the agent runs. The agent is not conversational.
 
 ---
 
-## Agent Steps Configuration
+## Input Fields
 
-> **Why 4 steps?** This agent is split into 4 sequential Respond steps so that each step produces a small, bounded output and no single step approaches Glean's 8,000-character response limit. Configure each numbered block below as a separate Respond step in the agent builder, in order.
+Configure these three fields on the Input Form trigger. All are optional. Reference them in step instructions using `[[field name]]` exactly as shown.
+
+| Field Label | Reference Name | Field Type | Placeholder | Default (if blank) |
+|---|---|---|---|---|
+| Time Window | `[[time_window]]` | Text | e.g. `24h`, `7d`, `2w` | `24h` |
+| Scope | `[[scope]]` | Text | `mine`, `all`, or a project key like `SUPPORT` | `mine` |
+| Change Direction | `[[direction]]` | Text | `escalations`, `de-escalations`, or `all` | `all` |
+
+**What each field controls:**
+- **Time Window** — How far back to look for changes. Uses Jira relative time syntax. Defaults to the last 24 hours if left blank.
+- **Scope** — Which tickets to scan. `mine` = tickets where the current user is assignee, reporter, watcher, or mentioned. `all` = every ticket in the instance. A project key (e.g. `SUPPORT`) = only that project.
+- **Change Direction** — Filter by escalation direction. `escalations` = urgency increased only. `de-escalations` = urgency decreased only. `all` = every change regardless of direction.
+
+---
+
+## Agent Steps
+
+> This agent uses 4 sequential Respond steps to keep each response well within Glean's character limit. Each step has a single bounded job. Glean automatically passes all previous step outputs to each subsequent step via memory — no manual piping is needed.
 
 ---
 
 ### Step 1 of 4 — Resolve Parameters & Run JQL Search
 
-**Step type:** Respond
+**Action type:** Respond
 
-**Step prompt:**
+**Instructions:**
 
 ```
 You are the first step of a Prioritization Change Notifier for Jira.
 
-Resolve the following input values (apply the default if the variable is blank):
-- time_window: {{time_window}} → default: 24h
-- scope: {{scope}} → default: mine
-- direction: {{direction}} → default: all
+Resolve the following values. Use the provided input if given; otherwise apply the stated default:
+- Time window: [[time_window]] — default: 24h
+- Scope: [[scope]] — default: mine
+- Direction filter: [[direction]] — default: all
 
-Select and run the correct JQL query from the list below based on scope:
+Select the correct JQL query based on the resolved scope and run it:
 
-scope = mine:
+If scope is "mine":
   (priority changed AFTER "-[time_window]" OR "Support Prioritization" changed AFTER "-[time_window]")
   AND (assignee = currentUser() OR reporter = currentUser() OR watcher = currentUser() OR mentions = currentUser())
   ORDER BY updated DESC
 
-scope = all:
+If scope is "all":
   (priority changed AFTER "-[time_window]" OR "Support Prioritization" changed AFTER "-[time_window]")
   ORDER BY updated DESC
 
-scope = [project key]:
+If scope is a project key:
   (priority changed AFTER "-[time_window]" OR "Support Prioritization" changed AFTER "-[time_window]")
   AND project = "[scope]"
   ORDER BY updated DESC
 
-Then output ONLY one of the following — no other text:
-- If tickets found: a comma-separated list of ticket keys, e.g.: SUPPORT-123, ENG-456, PROJ-789
-- If no tickets found: exactly this token → NO_RESULTS:[time_window]:[scope]
+Output ONLY one of these two things — no other text:
+- If results found: a comma-separated list of ticket keys, e.g.: SUPPORT-123, ENG-456, PROJ-789
+- If no results found: NO_RESULTS:[time_window]:[scope]
 ```
 
-**Expected output:** A comma-separated list of ticket keys, or `NO_RESULTS:24h:mine`.
+**Expected output:** A comma-separated list of ticket keys (e.g. `SUPPORT-123, ENG-456`) or `NO_RESULTS:24h:mine`.
 
 ---
 
 ### Step 2 of 4 — Extract Changelog Data
 
-**Step type:** Respond
+**Action type:** Respond
 
-**Step prompt:**
+**Instructions:**
 
 ```
-Step 1 output: [paste Step 1 output here]
+Review the output from Step 1.
 
-If the input starts with NO_RESULTS, output it unchanged and stop.
+If it starts with NO_RESULTS, output it unchanged and stop.
 
-For each ticket key in the list, fetch the full Jira changelog:
+For each ticket key listed in Step 1, fetch the full Jira changelog:
   GET /rest/api/3/issue/{key}/changelog
 
-Filter changelog entries to ONLY those where:
+Filter the changelog entries to ONLY those where:
   field == "priority"  OR  field == "Support Prioritization"
 
-Discard every other changelog entry. Do not report on status, assignee, labels, or any other field.
+Discard every other changelog entry. Do not surface status changes, assignee
+changes, label changes, or any other field — only the two fields above.
 
-For each ticket, output in this exact format (no extra text):
+For each ticket, output in this exact compact format:
 
-TICKET:[KEY]|[Title]|Status:[current_status]|CurPri:[current_priority_value]|CurSuppPri:[current_support_prioritization_value]
+TICKET:[KEY]|[Title]|Status:[current_status]|CurPri:[current_priority]|CurSuppPri:[current_support_prioritization]
 CHANGE:[field_name]|FROM:[fromString or (not set)]|TO:[toString or (cleared)]|BY:[author displayName]|AT:[YYYY-MM-DD HH:MM]
-(one CHANGE line per matching changelog entry, oldest first)
+(repeat one CHANGE line per matching changelog entry, oldest first)
 ---
 
 Rules:
-- If a ticket has zero matching changelog entries after filtering, omit it entirely — no TICKET line.
+- If a ticket has zero matching changelog entries, omit it entirely.
 - If fromString is null, write (not set). If toString is null, write (cleared).
-- Do not add any prose, headers, or explanations.
+- No prose, no headers, no explanations — structured data only.
 ```
 
-**Expected output:** Structured pipe-delimited raw data blocks, one per ticket with changes.
+**Expected output:** Pipe-delimited raw change data, one block per ticket that has qualifying changes.
 
 ---
 
 ### Step 3 of 4 — Apply Direction Filter & Format Ticket Blocks
 
-**Step type:** Respond
+**Action type:** Respond
 
-**Step prompt:**
+**Instructions:**
 
 ```
-Step 2 output: [paste Step 2 output here]
-Direction filter: {{direction}} (default: all)
+Review the changelog data output from Step 2.
 
-If the input starts with NO_RESULTS, output it unchanged and stop.
+If it starts with NO_RESULTS, output it unchanged and stop.
 
-Urgency ordering (low → high):
-  Priority:              Low < Medium < High < Critical
+Direction filter to apply (from the original input): [[direction]] — default: all
+
+Urgency ordering for both fields (low → high):
+  Priority:               Low < Medium < High < Critical
   Support Prioritization: P4 - Low < P3 - Medium < P2 - High < P1 - Critical
 
 For each CHANGE line, classify the direction:
-  - Escalation: TO value is higher urgency than FROM value
-  - De-escalation: TO value is lower urgency than FROM value
-  - Lateral: urgency equivalent (e.g. renamed value, same tier)
+  Escalation:    TO value is higher urgency than FROM
+  De-escalation: TO value is lower urgency than FROM
+  Lateral:       urgency is equivalent (e.g. renamed value, same tier)
 
-Apply filter:
-  direction = escalations    → keep only Escalation changes
-  direction = de-escalations → keep only De-escalation changes
-  direction = all            → keep all changes
+Apply the direction filter:
+  escalations    → keep only Escalation rows
+  de-escalations → keep only De-escalation rows
+  all            → keep all rows
 
-If a ticket has no remaining changes after filtering, omit it entirely.
+If a ticket has no remaining rows after filtering, omit it entirely — no ticket block.
 
-For each remaining ticket, output this formatted block:
+For each remaining ticket, output this formatted markdown block and nothing else:
 
 ---
 ### [KEY] — [Title]
@@ -166,43 +180,44 @@ For each remaining ticket, output this formatted block:
 |---|---|---|---|---|---|---|
 | 1 | [field] | [FROM] | [TO] | [⬆️ Escalation / ⬇️ De-escalation / ↔️ Lateral] | [BY] | [AT] |
 
-Output only these blocks. No prose, no summary, no header.
+Output only these ticket blocks. No report header, no summary, no prose.
 ```
 
-**Expected output:** Formatted markdown ticket blocks only — one per ticket that has qualifying changes.
+**Expected output:** Formatted markdown ticket blocks only — one per ticket with qualifying changes.
 
 ---
 
 ### Step 4 of 4 — Assemble Final Report
 
-**Step type:** Respond
+**Action type:** Respond
 
-**Step prompt:**
+**Instructions:**
 
 ```
-Step 3 output: [paste Step 3 output here]
+Review all previous step outputs.
 
-If the input starts with NO_RESULTS, parse the token as NO_RESULTS:[time_window]:[scope] and output:
+If Step 1 output starts with NO_RESULTS, parse it as NO_RESULTS:[time_window]:[scope] and output:
   "No prioritization changes found in the last [time_window] for [scope]."
 Then stop.
 
-Count from Step 3 output:
-  - Total tickets (count --- separators)
+Count from the Step 3 ticket blocks:
+  - Total tickets (number of --- separators / ticket blocks)
   - Total ⬆️ Escalation rows across all tickets
   - Total ⬇️ De-escalation rows across all tickets
 
-Build the final report in this order:
+Build and output the final report in this exact order:
 
-1. HEADER (write this first):
+1. HEADER:
 ## Prioritization Change Report
-**Period:** Last {{time_window}} | **Scope:** {{scope}} | **Filter:** {{direction}}
+**Period:** Last [[time_window]] | **Scope:** [[scope]] | **Filter:** [[direction]]
 **Generated:** [current date and time, YYYY-MM-DD HH:MM, user's timezone or UTC]
 
 [N] ticket(s) had prioritization changes. ([X] ⬆️ escalations, [Y] ⬇️ de-escalations)
 
-2. TICKET BLOCKS (paste Step 3 output exactly as-is, no modifications)
+2. TICKET BLOCKS:
+Reproduce the Step 3 formatted ticket blocks exactly as written — do not alter them.
 
-3. SUMMARY TABLE (append after all ticket blocks):
+3. SUMMARY TABLE:
 ---
 ## Summary
 | Ticket | Title | # Changes | Direction Summary | Last Changed By | Last Changed At |
@@ -210,13 +225,13 @@ Build the final report in this order:
 (one row per ticket — derive values from the ticket blocks above)
 ```
 
-**Expected output:** The complete final prioritization change report with header, ticket blocks, and summary table.
+**Expected output:** The complete final prioritization change report with header, all ticket blocks, and summary table.
 
 ---
 
 ## JQL Reference
 
-> Use these in Step 1. Replace `[time_window]` with the resolved value (e.g. `24h`, `7d`).
+> These queries are used in Step 1. Replace `[time_window]` with the resolved value (e.g. `24h`, `7d`).
 
 ```jql
 -- scope = mine
@@ -233,7 +248,7 @@ ORDER BY updated DESC
 AND project = "[scope]"
 ORDER BY updated DESC
 
--- specific ticket IDs (when user names exact tickets in their message)
+-- specific ticket IDs named by the user
 issue in ("TICKET-1", "TICKET-2")
 AND (priority changed AFTER "-[time_window]" OR "Support Prioritization" changed AFTER "-[time_window]")
 ```
@@ -242,10 +257,10 @@ AND (priority changed AFTER "-[time_window]" OR "Support Prioritization" changed
 
 ## Notes
 
-**Support Prioritization field ID:** If Jira does not recognize `"Support Prioritization"` by name in JQL, find the field's numeric ID by going to **Jira Settings → Custom Fields → Support Prioritization** (the ID appears in the URL), then replace `"Support Prioritization"` in all JQL with `cf[XXXXX]`.
+**Support Prioritization field ID:** If Jira does not recognize `"Support Prioritization"` by name in JQL, find the field's numeric ID at **Jira Settings → Custom Fields → Support Prioritization** (the ID appears in the URL). Replace `"Support Prioritization"` in all JQL with `cf[XXXXX]`.
 
-**Example prompts this agent handles:**
-- "What priority changes happened today?" *(defaults: 24h / mine / all)*
-- "Show me all escalations in the last 7 days"
-- "Did any SUPPORT tickets get de-escalated this week?"
-- "Were there any priority changes on SUPPORT-123 or ENG-456?"
+**Example prompts / form entries this agent handles:**
+- Time Window: `24h`, Scope: *(blank)*, Direction: *(blank)* → changes on my tickets in the last 24 hours
+- Time Window: `7d`, Scope: *(blank)*, Direction: `escalations` → escalations on my tickets in the last 7 days
+- Time Window: `7d`, Scope: `SUPPORT`, Direction: `de-escalations` → de-escalations in the SUPPORT project this week
+- Time Window: `48h`, Scope: `all`, Direction: `all` → every prioritization change across the instance in 48 hours
