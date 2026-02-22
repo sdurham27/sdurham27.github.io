@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BuildOps Accounting Integration Assistant</title>
+  <link rel="stylesheet" href="accounting-style.css" />
+</head>
+<body>
+
+  <div class="app">
+
+    <!-- Header -->
+    <header class="header">
+      <span class="logo">BuildOps <span class="logo-sub">Accounting Assistant</span></span>
+      <button class="settings-btn" id="settings-toggle" aria-label="Open settings" title="Settings">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+          <path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.01 7.01 0 0 0-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54a7.33 7.33 0 0 0-1.62.94l-2.39-.96a.476.476 0 0 0-.59.22L2.74 8.87a.47.47 0 0 0 .12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54a7.33 7.33 0 0 0 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.47.47 0 0 0-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+        </svg>
+      </button>
+    </header>
+
+    <!-- Settings Panel -->
+    <div class="settings-panel" id="settings-panel" hidden>
+      <div class="settings-inner">
+        <h3>Settings</h3>
+        <label>
+          Your BuildOps Email
+          <input type="email" id="glean-email" placeholder="you@buildops.com" autocomplete="off" />
+          <small>Required by Glean server tokens (X-Glean-ActAs)</small>
+        </label>
+        <label>
+          Glean API Token
+          <input type="password" id="glean-token" placeholder="Paste your Glean API token" autocomplete="off" />
+          <small>Server token issued by your IT / Glean admin</small>
+        </label>
+        <label>
+          Glean Backend URL
+          <input type="text" id="glean-backend" placeholder="buildops-be.glean.com" />
+          <small>Typically &lt;company&gt;-be.glean.com</small>
+        </label>
+        <div class="settings-actions">
+          <button id="save-settings">Save Settings</button>
+          <span id="settings-status" class="settings-status"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main -->
+    <main class="main">
+
+      <div class="hero">
+        <h1 class="headline">Accounting Integration Help</h1>
+        <p class="subheadline">Select your ERP below and ask anything about the BuildOps integration — setup, field mapping, job costing, sync behavior, or troubleshooting.</p>
+      </div>
+
+      <!-- Prompt Card -->
+      <div class="prompt-card" id="prompt-card">
+
+        <!-- ERP Dropdown -->
+        <div class="field-group">
+          <label for="erp-select">Accounting System</label>
+          <div class="select-wrapper">
+            <select id="erp-select">
+              <option value="">— Select an ERP —</option>
+              <optgroup label="Cloud ERPs">
+                <option value="QuickBooks Online">QuickBooks Online</option>
+                <option value="Xero">Xero</option>
+                <option value="Sage Intacct">Sage Intacct</option>
+                <option value="NetSuite (Oracle)">NetSuite (Oracle)</option>
+                <option value="Microsoft Dynamics 365 Business Central">Microsoft Dynamics 365 Business Central</option>
+                <option value="Acumatica">Acumatica</option>
+              </optgroup>
+              <optgroup label="Desktop / On-Premise ERPs">
+                <option value="QuickBooks Desktop (Pro / Premier / Enterprise)">QuickBooks Desktop (Pro / Premier / Enterprise)</option>
+                <option value="Sage 100 Contractor">Sage 100 Contractor</option>
+                <option value="Sage 300 CRE (Timberline)">Sage 300 CRE (Timberline)</option>
+                <option value="Foundation Software">Foundation Software</option>
+                <option value="Spectrum (Viewpoint)">Spectrum (Viewpoint)</option>
+                <option value="ComputerEase">ComputerEase</option>
+              </optgroup>
+              <optgroup label="Other">
+                <option value="Procore Financials">Procore Financials</option>
+                <option value="Viewpoint Vista">Viewpoint Vista</option>
+                <option value="Jonas Construction Software">Jonas Construction Software</option>
+              </optgroup>
+            </select>
+            <svg class="select-arrow" viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+              <path d="M7 10l5 5 5-5z"/>
+            </svg>
+          </div>
+          <p class="erp-description" id="erp-description"></p>
+        </div>
+
+        <!-- Question Input -->
+        <div class="field-group">
+          <label for="question-input">Your Question</label>
+          <textarea
+            id="question-input"
+            placeholder="e.g. How does job cost sync work? How do I set up the integration? Why isn't my invoice syncing?"
+            rows="3"
+          ></textarea>
+        </div>
+
+        <!-- Quick question chips -->
+        <div class="quick-chips" id="quick-chips" hidden>
+          <span class="chips-label">Quick questions:</span>
+          <div class="chips" id="chips-list"></div>
+        </div>
+
+        <!-- Submit -->
+        <button class="ask-btn" id="ask-btn" disabled>
+          <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+          </svg>
+          Ask
+        </button>
+
+      </div>
+
+      <!-- Thinking indicator -->
+      <div class="thinking-area" id="thinking-area" hidden>
+        <div class="thinking-dots">
+          <span></span><span></span><span></span>
+        </div>
+        <p class="thinking-text">Looking up integration details…</p>
+      </div>
+
+      <!-- Response Area -->
+      <div class="response-area" id="response-area" hidden>
+        <div class="response-header">
+          <span class="area-label">BuildOps AI</span>
+          <button class="new-question-btn" id="new-question-btn">New question</button>
+        </div>
+        <div class="response-text" id="response-text"></div>
+        <div class="follow-ups" id="follow-ups" hidden>
+          <div class="area-label follow-up-label">Suggested follow-ups</div>
+          <ul class="follow-up-list" id="follow-up-list"></ul>
+        </div>
+      </div>
+
+      <!-- Error Area -->
+      <div class="error-area" id="error-area" hidden></div>
+
+    </main>
+  </div>
+
+  <script src="accounting.js"></script>
+</body>
+</html>
