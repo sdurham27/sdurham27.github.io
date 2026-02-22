@@ -1,82 +1,107 @@
 /**
  * BuildOps Accounting Integration Assistant
  *
- * Lets users select an ERP from a dropdown, type a question, and get
- * an answer from Glean about the BuildOps integration with that system.
- *
- * The selected ERP is injected as context into each Glean request so the
- * AI focuses its answer on the relevant integration.
+ * Flow:
+ *  1. User selects an ERP from the dropdown (only systems connected to BuildOps).
+ *  2. Topic toggles appear — user picks one or more: General Knowledge,
+ *     Integration Paths, Installation Tips, Basic Setup, Troubleshooting,
+ *     Sync Errors.
+ *  3. An optional free-text field lets them add extra context.
+ *  4. The Ask button sends a context-rich prompt to Glean that covers every
+ *     selected topic with the right framing for that ERP.
  */
 
-const PROXY_URL      = 'https://jira-proxy.shrimpwheels.workers.dev';
-const STORAGE_KEY    = 'buildopsAccountingSettings';
+const PROXY_URL       = 'https://jira-proxy.shrimpwheels.workers.dev';
+const STORAGE_KEY     = 'buildopsAccountingSettings';
 const DEFAULT_BACKEND = 'buildops-be.glean.com';
 
 // ---------------------------------------------------------------------------
-// ERP metadata — quick-question chips and description blurbs per system
+// ERP metadata — only systems currently connected to BuildOps
 // ---------------------------------------------------------------------------
 const ERP_META = {
   'QuickBooks Online': {
-    description: 'Cloud-based accounting for small-to-mid-size field service businesses. Widely used BuildOps integration.',
-    chips: ['How do I set up the QBO integration?', 'How does invoice sync work?', 'How is job costing handled?', 'Why isn\'t my customer syncing?'],
-  },
-  'QuickBooks Desktop (Pro / Premier / Enterprise)': {
-    description: 'On-premise QuickBooks via Web Connector or IIF export. Setup differs from QBO.',
-    chips: ['How does QBD sync differ from QBO?', 'What is the Web Connector setup?', 'How do I export invoices to QBD?', 'What are the sync limitations?'],
-  },
-  'Xero': {
-    description: 'Cloud accounting popular with smaller contractors and service businesses.',
-    chips: ['How do I connect BuildOps to Xero?', 'How do invoices sync to Xero?', 'How are contacts mapped?', 'Does Xero support job costing?'],
+    description: 'Cloud-based accounting widely used by BuildOps customers. Supports real-time sync for customers, invoices, and payments.',
   },
   'Sage Intacct': {
-    description: 'Enterprise cloud ERP with strong job cost and project accounting features.',
-    chips: ['How is job costing set up in Intacct?', 'How do dimensions map from BuildOps?', 'How does invoice sync work?', 'What GL accounts do I need to configure?'],
+    description: 'Enterprise cloud ERP with multi-dimensional job costing. Common with larger mechanical and electrical contractors.',
   },
   'NetSuite (Oracle)': {
-    description: 'Enterprise ERP with robust financials and project management. Common in larger BuildOps customers.',
-    chips: ['How does the NetSuite integration work?', 'How are work orders mapped to NetSuite jobs?', 'How do invoices sync to NetSuite?', 'What are the prerequisites?'],
+    description: 'Enterprise cloud ERP for complex financials and project accounting. Used by larger BuildOps enterprise customers.',
   },
-  'Microsoft Dynamics 365 Business Central': {
-    description: 'Microsoft\'s cloud ERP for mid-market businesses, often used alongside Microsoft 365.',
-    chips: ['How do I set up the Business Central integration?', 'How do customers sync?', 'How are invoices pushed to BC?', 'What fields are mapped?'],
-  },
-  'Acumatica': {
-    description: 'Cloud ERP popular with construction and field service companies for project and job cost accounting.',
-    chips: ['How does the Acumatica integration work?', 'How is job cost data synced?', 'How do service orders map to Acumatica?', 'What are the configuration steps?'],
-  },
-  'Sage 100 Contractor': {
-    description: 'On-premise ERP designed for contractors, with job costing and project management built in.',
-    chips: ['How does BuildOps connect to Sage 100 Contractor?', 'How is job cost data pushed?', 'What sync methods are available?', 'What are the known limitations?'],
+  'QuickBooks Desktop (Enterprise)': {
+    description: 'On-premise QuickBooks Enterprise, connected via the QuickBooks Web Connector. Setup and sync behavior differ from QBO.',
   },
   'Sage 300 CRE (Timberline)': {
-    description: 'On-premise ERP for mid-to-large construction companies with deep job cost accounting.',
-    chips: ['How does the Sage 300 CRE integration work?', 'How is job cost data exported?', 'How do customers sync?', 'What fields are supported?'],
+    description: 'On-premise construction ERP with deep job cost, phase, and department tracking. Popular with mid-to-large contractors.',
   },
   'Foundation Software': {
-    description: 'Accounting and job cost software purpose-built for construction contractors.',
-    chips: ['How does BuildOps integrate with Foundation?', 'How is job costing handled?', 'How do invoices sync?', 'What are the setup steps?'],
+    description: 'On-premise accounting and job cost software purpose-built for construction contractors.',
   },
   'Spectrum (Viewpoint)': {
-    description: 'ERP for construction companies with strong project management and job cost modules.',
-    chips: ['How does the Spectrum integration work?', 'How are service orders mapped?', 'How does job cost sync?', 'What are the prerequisites?'],
-  },
-  'ComputerEase': {
-    description: 'Accounting software for construction contractors, common in mechanical and electrical trades.',
-    chips: ['How does BuildOps integrate with ComputerEase?', 'How do invoices sync?', 'How is job costing handled?', 'What are known limitations?'],
-  },
-  'Procore Financials': {
-    description: 'Financial module within the Procore construction management platform.',
-    chips: ['How does BuildOps work with Procore Financials?', 'How do contracts sync?', 'How are invoices pushed?', 'What fields are supported?'],
-  },
-  'Viewpoint Vista': {
-    description: 'Enterprise ERP for large construction companies, part of the Trimble portfolio.',
-    chips: ['How does the Vista integration work?', 'How is job cost data handled?', 'How do customers sync?', 'What are the setup requirements?'],
-  },
-  'Jonas Construction Software': {
-    description: 'ERP designed for mechanical, electrical, plumbing, and HVAC contractors.',
-    chips: ['How does BuildOps integrate with Jonas?', 'How are invoices synced?', 'How is job costing supported?', 'What are the current limitations?'],
+    description: 'On-premise ERP for construction companies with strong project management and job cost modules.',
   },
 };
+
+// ---------------------------------------------------------------------------
+// Topic definitions — each drives specific framing in the Glean prompt
+// ---------------------------------------------------------------------------
+const TOPICS = [
+  {
+    id:    'general',
+    label: 'General Knowledge',
+    prompt:
+      'Provide a clear overview of how the BuildOps integration with {ERP} works — ' +
+      'what data flows between the two systems, the overall architecture, and any high-level ' +
+      'concepts the user should understand before diving deeper.',
+  },
+  {
+    id:    'paths',
+    label: 'Integration Paths',
+    prompt:
+      'Show the exact field-level mapping between BuildOps and {ERP} in both directions. ' +
+      'For each BuildOps concept (Customer, Job / Work Order, Invoice, Line Item, Cost Code, ' +
+      'Payment, Vendor, etc.), show the corresponding {ERP} object and field name. ' +
+      'For example: "BuildOps Job # → {ERP} Project ID" or "BuildOps Customer → {ERP} Client". ' +
+      'Call out any cases where {ERP} has structures that BuildOps must accommodate ' +
+      '(e.g. phases, departments, cost types, sub-jobs) and explain how BuildOps handles them. ' +
+      'Use a table format where possible.',
+  },
+  {
+    id:    'installation',
+    label: 'Installation Tips',
+    prompt:
+      'Walk through the installation steps to connect BuildOps with {ERP}, including: ' +
+      'prerequisites, required credentials or API keys, where to install any connector software, ' +
+      'firewall or network requirements for on-premise systems, and common pitfalls to avoid ' +
+      'during the initial connection.',
+  },
+  {
+    id:    'setup',
+    label: 'Basic Setup',
+    prompt:
+      'Explain the post-installation configuration required to get the BuildOps + {ERP} integration ' +
+      'fully operational. Cover: GL account mapping, customer / vendor sync settings, job or project ' +
+      'creation settings, invoice sync direction, tax configuration, and any {ERP}-specific settings ' +
+      'that must be enabled. Use numbered steps where possible.',
+  },
+  {
+    id:    'troubleshoot',
+    label: 'Troubleshooting',
+    prompt:
+      'Help diagnose and resolve common integration problems between BuildOps and {ERP}. ' +
+      'Cover frequent failure scenarios — records not syncing, duplicate records, missing field ' +
+      'values, authentication failures — and explain how to identify the root cause and fix each one.',
+  },
+  {
+    id:    'sync-errors',
+    label: 'Sync Errors',
+    prompt:
+      'List and explain the specific sync error codes and messages that appear in BuildOps ' +
+      'when syncing with {ERP}. For each error, explain what caused it and provide the exact ' +
+      'steps to resolve it. Include guidance on where to find sync logs in BuildOps and how to ' +
+      'retry failed records.',
+  },
+];
 
 // ---------------------------------------------------------------------------
 // DOM references
@@ -91,9 +116,10 @@ const settingsStatus    = document.getElementById('settings-status');
 
 const erpSelect         = document.getElementById('erp-select');
 const erpDescription    = document.getElementById('erp-description');
+const topicsGroup       = document.getElementById('topics-group');
+const topicToggles      = document.getElementById('topic-toggles');
+const questionGroup     = document.getElementById('question-group');
 const questionInput     = document.getElementById('question-input');
-const quickChips        = document.getElementById('quick-chips');
-const chipsList         = document.getElementById('chips-list');
 const askBtn            = document.getElementById('ask-btn');
 
 const thinkingArea      = document.getElementById('thinking-area');
@@ -107,8 +133,9 @@ const errorArea         = document.getElementById('error-area');
 // ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
-let chatSessionToken  = null;   // carries conversation context across turns
-let abortController   = null;
+let selectedTopics   = new Set();   // set of topic IDs
+let chatSessionToken = null;        // carries conversation context across turns
+let abortController  = null;
 
 // ---------------------------------------------------------------------------
 // Settings
@@ -141,61 +168,103 @@ settingsToggle.addEventListener('click', () => {
 });
 
 // ---------------------------------------------------------------------------
-// ERP dropdown — update description and quick-question chips
+// ERP dropdown — show topics section and update description blurb
 // ---------------------------------------------------------------------------
 erpSelect.addEventListener('change', () => {
   const erp  = erpSelect.value;
   const meta = ERP_META[erp];
 
-  // Update description blurb
   erpDescription.textContent = meta ? meta.description : '';
 
-  // Update chip bar
-  chipsList.innerHTML = '';
-  if (meta && meta.chips.length) {
-    meta.chips.forEach(text => {
-      const btn = document.createElement('button');
-      btn.className   = 'chip';
-      btn.textContent = text;
-      btn.addEventListener('click', () => {
-        questionInput.value = text;
-        updateAskButton();
-      });
-      chipsList.appendChild(btn);
-    });
-    quickChips.hidden = false;
-  } else {
-    quickChips.hidden = true;
-  }
+  // Reveal topic toggles and question textarea once an ERP is chosen
+  topicsGroup.hidden   = !erp;
+  questionGroup.hidden = !erp;
 
-  // Reset conversation when ERP changes
+  // Clear topic selection when ERP changes
+  selectedTopics.clear();
+  document.querySelectorAll('.topic-toggle').forEach(btn => {
+    btn.setAttribute('aria-pressed', 'false');
+    btn.classList.remove('is-selected');
+  });
+
+  // Reset conversation when switching ERP
   chatSessionToken = null;
   updateAskButton();
 });
 
 // ---------------------------------------------------------------------------
-// Ask button state
+// Topic toggles — multi-select pills
+// ---------------------------------------------------------------------------
+topicToggles.addEventListener('click', (e) => {
+  const btn = e.target.closest('.topic-toggle');
+  if (!btn) return;
+
+  const topic    = btn.dataset.topic;
+  const pressed  = btn.getAttribute('aria-pressed') === 'true';
+  const nowOn    = !pressed;
+
+  btn.setAttribute('aria-pressed', String(nowOn));
+  btn.classList.toggle('is-selected', nowOn);
+
+  if (nowOn) {
+    selectedTopics.add(topic);
+  } else {
+    selectedTopics.delete(topic);
+  }
+
+  updateAskButton();
+});
+
+// ---------------------------------------------------------------------------
+// Ask button — enabled when ERP + at least one topic are selected
 // ---------------------------------------------------------------------------
 function updateAskButton() {
-  askBtn.disabled = !(erpSelect.value && questionInput.value.trim());
+  askBtn.disabled = !(erpSelect.value && selectedTopics.size > 0);
 }
 
-questionInput.addEventListener('input', updateAskButton);
+// ---------------------------------------------------------------------------
+// Build the contextual prompt for Glean
+// ---------------------------------------------------------------------------
+function buildPrompt(erp) {
+  const topicIds = [...selectedTopics];
+  const topicDefs = TOPICS.filter(t => topicIds.includes(t.id));
+  const topicLabels = topicDefs.map(t => t.label).join(', ');
+
+  const lines = [
+    `I am a BuildOps employee. I need help with the BuildOps integration with ${erp}.`,
+    ``,
+    `Please address the following topic(s): ${topicLabels}.`,
+    ``,
+  ];
+
+  if (topicDefs.length === 1) {
+    // Single topic — inject its framing inline
+    lines.push(topicDefs[0].prompt.replace(/\{ERP\}/g, erp));
+  } else {
+    // Multiple topics — add a labelled section for each
+    topicDefs.forEach(t => {
+      lines.push(`## ${t.label}`);
+      lines.push(t.prompt.replace(/\{ERP\}/g, erp));
+      lines.push('');
+    });
+  }
+
+  const extra = questionInput.value.trim();
+  if (extra) {
+    lines.push('');
+    lines.push(`Additional context from the user: ${extra}`);
+  }
+
+  return lines.join('\n');
+}
 
 // ---------------------------------------------------------------------------
 // Ask Glean
 // ---------------------------------------------------------------------------
 askBtn.addEventListener('click', () => {
-  const erp      = erpSelect.value;
-  const question = questionInput.value.trim();
-  if (!erp || !question) return;
-
-  // Build a context-enriched prompt so Glean focuses on the right integration
-  const contextualQuestion =
-    `I am a BuildOps employee asking about the BuildOps integration with ${erp}.\n\n` +
-    `Question: ${question}`;
-
-  askGlean(contextualQuestion, erp);
+  const erp = erpSelect.value;
+  if (!erp || selectedTopics.size === 0) return;
+  askGlean(buildPrompt(erp), erp);
 });
 
 async function askGlean(contextualQuestion, erp) {
@@ -207,7 +276,6 @@ async function askGlean(contextualQuestion, erp) {
     return;
   }
 
-  // Switch to loading state
   setLoading(true);
   hideError();
 
@@ -275,9 +343,9 @@ async function askGlean(contextualQuestion, erp) {
       throw new Error('Glean response was empty.');
     }
 
-    // Render the markdown response as HTML
     responseText.innerHTML = renderMarkdown(rawText);
     responseArea.hidden    = false;
+    responseArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
     // Follow-up prompts
     const prompts = aiMessage.followUpPrompts || data.followUpPrompts || [];
@@ -290,7 +358,7 @@ async function askGlean(contextualQuestion, erp) {
         btn.className   = 'follow-up-btn';
         btn.addEventListener('click', () => {
           const followUp =
-            `I am a BuildOps employee asking about the BuildOps integration with ${erp}.\n\n` +
+            `I am a BuildOps employee asking a follow-up question about the BuildOps + ${erp} integration.\n\n` +
             `Question: ${p}`;
           askGlean(followUp, erp);
         });
@@ -311,15 +379,23 @@ async function askGlean(contextualQuestion, erp) {
 }
 
 // ---------------------------------------------------------------------------
-// New question — reset response and allow asking again
+// New question — reset for a fresh query
 // ---------------------------------------------------------------------------
 newQuestionBtn.addEventListener('click', () => {
   responseArea.hidden = true;
   followUps.hidden    = true;
   questionInput.value = '';
-  questionInput.focus();
-  chatSessionToken = null;  // start a fresh conversation
+  chatSessionToken    = null;
+
+  // Clear topic selection
+  selectedTopics.clear();
+  document.querySelectorAll('.topic-toggle').forEach(btn => {
+    btn.setAttribute('aria-pressed', 'false');
+    btn.classList.remove('is-selected');
+  });
+
   updateAskButton();
+  erpSelect.focus();
 });
 
 // ---------------------------------------------------------------------------
@@ -328,10 +404,7 @@ newQuestionBtn.addEventListener('click', () => {
 function setLoading(on) {
   thinkingArea.hidden = !on;
   askBtn.disabled     = on;
-  if (!on) {
-    // Re-evaluate button state based on form contents
-    updateAskButton();
-  }
+  if (!on) updateAskButton();
 }
 
 function showError(msg) {
@@ -348,18 +421,17 @@ function hideError() {
 // Handles headings, bold, italic, code, pre, tables, lists, blockquotes, hr
 // ---------------------------------------------------------------------------
 function renderMarkdown(md) {
-  // Escape raw HTML in input to prevent XSS
   let html = escapeHtml(md);
 
-  // Fenced code blocks  (``` ... ```)
-  html = html.replace(/```[\w]*\n?([\s\S]*?)```/g, (_, code) => {
-    return `<pre><code>${code.trim()}</code></pre>`;
-  });
+  // Fenced code blocks
+  html = html.replace(/```[\w]*\n?([\s\S]*?)```/g, (_, code) =>
+    `<pre><code>${code.trim()}</code></pre>`
+  );
 
-  // Inline code  (`...`)
+  // Inline code
   html = html.replace(/`([^`\n]+)`/g, '<code>$1</code>');
 
-  // Headings  (## Heading)
+  // Headings
   html = html.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
   html = html.replace(/^### (.+)$/gm,  '<h3>$1</h3>');
   html = html.replace(/^## (.+)$/gm,   '<h2>$1</h2>');
@@ -378,32 +450,30 @@ function renderMarkdown(md) {
   // Blockquote
   html = html.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
 
-  // Tables (header | cell | cell rows)
+  // Tables
   html = renderTables(html);
 
-  // Unordered lists  (- item or * item)
+  // Unordered lists
   html = html.replace(/((?:^[ \t]*[-*+] .+\n?)+)/gm, (block) => {
-    const items = block.trim().split('\n').map(line =>
-      `<li>${line.replace(/^[ \t]*[-*+] /, '').trim()}</li>`
-    ).join('');
+    const items = block.trim().split('\n')
+      .map(line => `<li>${line.replace(/^[ \t]*[-*+] /, '').trim()}</li>`)
+      .join('');
     return `<ul>${items}</ul>`;
   });
 
-  // Ordered lists  (1. item)
+  // Ordered lists
   html = html.replace(/((?:^[ \t]*\d+\. .+\n?)+)/gm, (block) => {
-    const items = block.trim().split('\n').map(line =>
-      `<li>${line.replace(/^[ \t]*\d+\. /, '').trim()}</li>`
-    ).join('');
+    const items = block.trim().split('\n')
+      .map(line => `<li>${line.replace(/^[ \t]*\d+\. /, '').trim()}</li>`)
+      .join('');
     return `<ol>${items}</ol>`;
   });
 
-  // Paragraphs — wrap consecutive non-empty, non-block lines
+  // Paragraphs
   html = html.split(/\n{2,}/).map(chunk => {
     chunk = chunk.trim();
     if (!chunk) return '';
-    // Already a block element — don't wrap
     if (/^<(h[1-6]|ul|ol|li|pre|blockquote|table|hr|p)/.test(chunk)) return chunk;
-    // Single line-break inside paragraph → <br>
     return `<p>${chunk.replace(/\n/g, '<br>')}</p>`;
   }).join('\n');
 
@@ -411,28 +481,19 @@ function renderMarkdown(md) {
 }
 
 function renderTables(html) {
-  // Match markdown table blocks: header | separator | rows
-  return html.replace(
-    /((?:^\|.+\|\n?)+)/gm,
-    (block) => {
-      const lines = block.trim().split('\n').filter(l => l.trim());
-      if (lines.length < 2) return block;
+  return html.replace(/((?:^\|.+\|\n?)+)/gm, (block) => {
+    const lines = block.trim().split('\n').filter(l => l.trim());
+    if (lines.length < 2) return block;
+    if (!/^\|[\s\-|:]+\|$/.test(lines[1].trim())) return block;
 
-      // Check second line is a separator (---|---|...)
-      if (!/^\|[\s\-|:]+\|$/.test(lines[1].trim())) return block;
-
-      const headerCells = parseTableRow(lines[0]);
-      const bodyRows    = lines.slice(2);
-
-      const thead = `<thead><tr>${headerCells.map(c => `<th>${c}</th>`).join('')}</tr></thead>`;
-      const tbody = bodyRows.map(row => {
-        const cells = parseTableRow(row);
-        return `<tr>${cells.map(c => `<td>${c}</td>`).join('')}</tr>`;
-      }).join('');
-
-      return `<table>${thead}<tbody>${tbody}</tbody></table>`;
-    }
-  );
+    const headerCells = parseTableRow(lines[0]);
+    const bodyRows    = lines.slice(2);
+    const thead = `<thead><tr>${headerCells.map(c => `<th>${c}</th>`).join('')}</tr></thead>`;
+    const tbody = bodyRows
+      .map(row => `<tr>${parseTableRow(row).map(c => `<td>${c}</td>`).join('')}</tr>`)
+      .join('');
+    return `<table>${thead}<tbody>${tbody}</tbody></table>`;
+  });
 }
 
 function parseTableRow(row) {

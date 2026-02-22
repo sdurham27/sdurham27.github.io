@@ -323,45 +323,64 @@ body {
   opacity: 0.55;
 }
 
-/* ---- Quick chips ---- */
-.quick-chips {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  animation: fade-in 0.2s ease;
-}
-
-.chips-label {
+/* ---- Label hint (the "(optional)" / "(select all that apply)" suffix) ---- */
+.label-hint {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
   font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
   color: var(--text-muted);
+  opacity: 0.75;
 }
 
-.chips {
+/* ---- Topic toggles — multi-select pill grid ---- */
+.topic-toggles {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.chip {
+.topic-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   background: none;
   border: 1px solid var(--border);
   border-radius: 20px;
   color: var(--text-muted);
   font-family: inherit;
-  font-size: 0.8rem;
-  padding: 5px 12px;
+  font-size: 0.85rem;
+  padding: 7px 14px 7px 10px;
   cursor: pointer;
-  transition: border-color 0.2s, color 0.2s, background 0.2s;
+  transition: border-color 0.18s, color 0.18s, background 0.18s, box-shadow 0.18s;
+  user-select: none;
   white-space: nowrap;
 }
 
-.chip:hover {
+.topic-toggle:hover {
   border-color: var(--accent);
   color: var(--text);
   background: rgba(37, 99, 235, 0.07);
+}
+
+.topic-toggle.is-selected {
+  background: rgba(37, 99, 235, 0.15);
+  border-color: var(--accent);
+  color: var(--text);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.toggle-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+.topic-toggle.is-selected .toggle-icon {
+  opacity: 1;
+  color: var(--accent);
 }
 
 /* ---- Ask Button ---- */
