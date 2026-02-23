@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BuildOps Customer Onboarding Portal</title>
+  <link rel="stylesheet" href="onboarding-style.css" />
+</head>
+<body>
+  <div class="app">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <span class="logo">BuildOps <span class="logo-sub">Onboarding Portal</span></span>
+      </div>
+      <div class="header-right">
+        <a href="announcements.html" class="header-nav-link">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
+          Announcements
+        </a>
+        <button class="header-settings-btn" id="settings-toggle" title="Configure Portal">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15"><path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.01 7.01 0 0 0-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54a7.33 7.33 0 0 0-1.62.94l-2.39-.96a.476.476 0 0 0-.59.22L2.74 8.87a.47.47 0 0 0 .12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54a7.33 7.33 0 0 0 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.47.47 0 0 0-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+          Portal Setup
+        </button>
+      </div>
+    </header>
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settings-modal" hidden>
+      <div class="modal">
+        <div class="modal-header">
+          <h2>Configure Your Onboarding Portal</h2>
+          <button class="modal-close-btn" id="modal-close" aria-label="Close">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+          </button>
+        </div>
+        <div class="modal-body">
+
+          <!-- Customer Info -->
+          <div class="modal-section">
+            <h3 class="modal-section-title">Your Information</h3>
+            <div class="modal-grid-2">
+              <label class="modal-label">
+                Your Name
+                <input type="text" id="s-customer-name" placeholder="e.g. John Smith" />
+              </label>
+              <label class="modal-label">
+                Company Name
+                <input type="text" id="s-company-name" placeholder="e.g. Acme HVAC Services" />
+              </label>
+              <label class="modal-label">
+                Onboarding Start Date
+                <input type="date" id="s-start-date" />
+              </label>
+              <label class="modal-label">
+                Target Go-Live Date
+                <input type="date" id="s-golive-date" />
+              </label>
+            </div>
+          </div>
+
+          <!-- Partners -->
+          <div class="modal-section">
+            <h3 class="modal-section-title">Your BuildOps Team</h3>
+            <div class="modal-partners-grid">
+
+              <div class="modal-partner-card">
+                <div class="modal-partner-role">
+                  <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                  Implementation Manager
+                </div>
+                <label class="modal-label">Name <input type="text" id="s-im-name" placeholder="Sarah Johnson" /></label>
+                <label class="modal-label">Email <input type="email" id="s-im-email" placeholder="sarah@buildops.com" /></label>
+                <label class="modal-label">Phone <input type="tel" id="s-im-phone" placeholder="+1 (555) 000-0000" /></label>
+              </div>
+
+              <div class="modal-partner-card">
+                <div class="modal-partner-role">
+                  <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                  Customer Success Manager
+                </div>
+                <label class="modal-label">Name <input type="text" id="s-csm-name" placeholder="Mike Chen" /></label>
+                <label class="modal-label">Email <input type="email" id="s-csm-email" placeholder="mike@buildops.com" /></label>
+                <label class="modal-label">Phone <input type="tel" id="s-csm-phone" placeholder="+1 (555) 000-0000" /></label>
+              </div>
+
+              <div class="modal-partner-card">
+                <div class="modal-partner-role">
+                  <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                  Account Executive
+                </div>
+                <label class="modal-label">Name <input type="text" id="s-ae-name" placeholder="Jessica Park" /></label>
+                <label class="modal-label">Email <input type="email" id="s-ae-email" placeholder="jessica@buildops.com" /></label>
+                <label class="modal-label">Phone <input type="tel" id="s-ae-phone" placeholder="+1 (555) 000-0000" /></label>
+              </div>
+
+              <div class="modal-partner-card">
+                <div class="modal-partner-role">
+                  <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                  Training Specialist
+                </div>
+                <label class="modal-label">Name <input type="text" id="s-ts-name" placeholder="David Rodriguez" /></label>
+                <label class="modal-label">Email <input type="email" id="s-ts-email" placeholder="david@buildops.com" /></label>
+                <label class="modal-label">Phone <input type="tel" id="s-ts-phone" placeholder="+1 (555) 000-0000" /></label>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+        <div class="modal-footer">
+          <button class="btn-ghost" id="modal-cancel">Cancel</button>
+          <button class="btn-primary" id="modal-save">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
+            Save Settings
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <main class="main">
+      <div class="dashboard-grid">
+
+        <!-- ── Welcome Banner ── -->
+        <div class="tile tile-welcome">
+          <div class="welcome-left">
+            <div class="welcome-eyebrow">Customer Onboarding</div>
+            <div class="welcome-name" id="welcome-name">Welcome to BuildOps!</div>
+            <div class="welcome-company" id="welcome-company">Configure your portal to get started →</div>
+            <div class="welcome-progress-wrap">
+              <div class="welcome-progress-track">
+                <div class="welcome-progress-fill" id="welcome-progress-fill" style="width:0%"></div>
+              </div>
+              <span class="welcome-progress-label" id="welcome-progress-label">0% complete</span>
+            </div>
+          </div>
+          <div class="welcome-right">
+            <div class="welcome-stat-card">
+              <div class="wstat-value" id="wstat-tasks">0 / 0</div>
+              <div class="wstat-label">Tasks Done</div>
+            </div>
+            <div class="welcome-stat-card highlight" id="wstat-golive-card">
+              <div class="wstat-value" id="wstat-golive">—</div>
+              <div class="wstat-label">Days to Go-Live</div>
+            </div>
+            <div class="welcome-stat-card">
+              <div class="wstat-value" id="wstat-start">—</div>
+              <div class="wstat-label">Days Onboarding</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Health Score ── -->
+        <div class="tile tile-health">
+          <div class="tile-header">
+            <div class="tile-title">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+              Health Score
+            </div>
+          </div>
+          <div class="health-gauge-container">
+            <svg class="health-gauge-svg" viewBox="0 0 120 120">
+              <circle class="gauge-track" cx="60" cy="60" r="50" />
+              <circle class="gauge-arc" id="gauge-arc" cx="60" cy="60" r="50"
+                stroke-dasharray="314.16"
+                stroke-dashoffset="314.16"
+                transform="rotate(-90 60 60)" />
+            </svg>
+            <div class="health-center">
+              <div class="health-score-val" id="health-score-val">0</div>
+              <div class="health-score-pct">/ 100</div>
+            </div>
+          </div>
+          <div class="health-status" id="health-status">Getting Started</div>
+          <div class="health-breakdown">
+            <div class="hb-row">
+              <span class="hb-dot hb-required"></span>
+              <span class="hb-text">Required</span>
+              <span class="hb-count" id="hb-required-count">0 / 0</span>
+            </div>
+            <div class="hb-row">
+              <span class="hb-dot hb-optional"></span>
+              <span class="hb-text">Optional</span>
+              <span class="hb-count" id="hb-optional-count">0 / 0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Action Items ── -->
+        <div class="tile tile-actions">
+          <div class="tile-header">
+            <div class="tile-title">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M19 3H14.82C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm-2 14l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+              Action Items
+            </div>
+            <span class="tile-count-badge" id="actions-count">0</span>
+          </div>
+          <ul class="action-list" id="action-list"></ul>
+          <div class="action-empty" id="action-empty" hidden>
+            <svg viewBox="0 0 24 24" fill="currentColor" width="32" height="32"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+            <p>All required tasks are complete — you're on track for go-live!</p>
+          </div>
+        </div>
+
+        <!-- ── Onboarding Checklist ── -->
+        <div class="tile tile-tasks">
+          <div class="tile-header">
+            <div class="tile-title">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+              Onboarding Checklist
+            </div>
+            <button class="tile-ghost-btn" id="reset-tasks-btn" title="Reset all tasks">Reset</button>
+          </div>
+          <div class="tasks-container" id="tasks-container"></div>
+        </div>
+
+        <!-- ── BuildOps Partners ── -->
+        <div class="tile tile-partners">
+          <div class="tile-header">
+            <div class="tile-title">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+              Your BuildOps Team
+            </div>
+            <button class="tile-ghost-btn" id="partners-edit-btn">Edit Team</button>
+          </div>
+          <div class="partners-grid" id="partners-grid"></div>
+        </div>
+
+        <!-- ── Knowledge Base ── -->
+        <div class="tile tile-kb">
+          <div class="tile-header">
+            <div class="tile-title">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M21 5c-1.11-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5S2.45 4.9 1 6v14.65c0 .25.25.5.5.5.1 0 .15-.05.25-.05C3.1 20.45 5.05 20 6.5 20c1.95 0 4.05.4 5.5 1.5 1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.3 4.75 1.05.1.05.15.05.25.05.25 0 .5-.25.5-.5V6c-.6-.45-1.25-.75-2-1zM21 18.5c-1.1-.35-2.3-.5-3.5-.5-1.7 0-4.15.65-5.5 1.5V8c1.35-.85 3.8-1.5 5.5-1.5 1.2 0 2.4.15 3.5.5v11.5z"/></svg>
+              Knowledge Base
+            </div>
+            <a href="https://help.buildops.com" target="_blank" rel="noopener" class="tile-link">Help Center ↗</a>
+          </div>
+          <div class="kb-search-wrap">
+            <svg class="kb-search-icon" viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+            <input type="text" class="kb-search-input" id="kb-search" placeholder="Search help articles…" />
+          </div>
+          <div class="kb-grid" id="kb-grid"></div>
+        </div>
+
+        <!-- ── Product Announcements ── -->
+        <div class="tile tile-announcements">
+          <div class="tile-header">
+            <div class="tile-title">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
+              What's New
+            </div>
+            <a href="announcements.html" class="tile-link">View all →</a>
+          </div>
+          <div class="announcement-list" id="announcement-list"></div>
+        </div>
+
+        <!-- ── Quick Links ── -->
+        <div class="tile tile-quick-links">
+          <div class="tile-header">
+            <div class="tile-title">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>
+              Quick Links
+            </div>
+          </div>
+          <div class="quick-links-row" id="quick-links-row"></div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <script src="onboarding.js"></script>
+</body>
+</html>
