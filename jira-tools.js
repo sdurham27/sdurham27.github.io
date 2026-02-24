@@ -410,7 +410,7 @@ document.getElementById('discover-btn').addEventListener('click', async () => {
   const days           = document.getElementById('discover-days').value;
   const source         = document.getElementById('discover-source').value;
   const customer       = document.getElementById('discover-customer').value.trim();
-  const defaultProject = document.getElementById('discover-project').value.trim().toUpperCase();
+  const defaultProject = document.getElementById('discover-project').value.trim();
 
   const btn = document.getElementById('discover-btn');
   btn.disabled = true;
@@ -485,10 +485,10 @@ let currentModalIdx = null;
 
 function openCreateModal(idx) {
   const t       = discoveredTickets[idx];
-  const project = document.getElementById('discover-project').value.trim().toUpperCase();
+  const project = document.getElementById('discover-project').value.trim();
 
-  document.getElementById('m-summary').value  = t.TITLE  || '';
-  document.getElementById('m-project').value  = project  || '';
+  document.getElementById('m-summary').value  = t.TITLE || '';
+  document.getElementById('m-project').value  = project || '';
   document.getElementById('m-customer').value = (t.CUSTOMER && t.CUSTOMER.toLowerCase() !== 'internal') ? t.CUSTOMER : '';
   document.getElementById('m-description').value = [
     t.DESCRIPTION || '',
@@ -545,7 +545,7 @@ document.getElementById('modal-create-btn').addEventListener('click', async () =
   }
 
   const summary  = document.getElementById('m-summary').value.trim();
-  const project  = document.getElementById('m-project').value.trim().toUpperCase();
+  const project  = document.getElementById('m-project').value.trim();
   const issueType= document.getElementById('m-type').value;
   const priority = document.getElementById('m-priority').value;
   const customer = document.getElementById('m-customer').value.trim();
