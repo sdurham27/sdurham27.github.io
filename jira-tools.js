@@ -425,7 +425,7 @@ function updateCustomFieldValue(fieldId, value, label) {
   }
 }
 
-async function loadProjectCustomFields(projectKey) {
+async function loadProjectCustomFields(projectKey, prefillParams) {
   const container = document.getElementById('discover-custom-fields');
   const loading   = document.getElementById('discover-fields-loading');
   container.innerHTML = '';
@@ -522,6 +522,8 @@ async function loadProjectCustomFields(projectKey) {
     for (const f of fields) {
       projectCustomFieldValues[f.id] = { name: f.name, type: f.type, value: '', label: '' };
     }
+
+    if (prefillParams) prefillCustomFieldsFromParams(prefillParams);
   } catch (_) {
     // Silently fail — form is still usable without project-specific fields
   } finally {
@@ -752,6 +754,38 @@ window.addEventListener('DOMContentLoaded', () => {
     extraFields.hidden = false;
     loadProjectCustomFields(projectKey);
   });
+
+  // ── URL param pre-fill (Glean agent opens this page with fields encoded) ──
+  const urlParams  = readUrlParams();
+  const hasParams  = Object.values(urlParams).some(Boolean);
+
+  if (hasParams) {
+    // Show the source banner if the agent passed source info
+    if (urlParams.source || urlParams.sourceDate) {
+      const parts  = [urlParams.source, urlParams.sourceDate].filter(Boolean);
+      const detail = parts.length ? ` — ${parts.join(' · ')}` : '';
+      document.getElementById('glean-source-detail').textContent = detail;
+      showEl('glean-source-banner');
+    }
+
+    // Pre-fill the core form fields
+    if (urlParams.summary)     document.getElementById('create-summary').value     = urlParams.summary;
+    if (urlParams.customer)    document.getElementById('create-customer').value    = urlParams.customer;
+    if (urlParams.description) document.getElementById('create-description').value = urlParams.description;
+
+    const normType = normalizeIssueType(urlParams.taskType);
+    if (normType) setSelectValue('create-type', normType);
+
+    const normPrio = normalizePriority(urlParams.priority);
+    if (normPrio) setSelectValue('create-priority', normPrio);
+
+    // Select project and reveal extra fields (also triggers custom field load + fuzzy prefill)
+    if (urlParams.project) {
+      setSelectValue('discover-project', urlParams.project);
+      document.getElementById('discover-extra-fields').hidden = false;
+      loadProjectCustomFields(urlParams.project, urlParams);
+    }
+  }
 });
 
 // ── Tab Navigation ──────────────────────────────────────────────────────────
@@ -780,298 +814,121 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
-// TOOL 1 — DISCOVER TICKETS (Glean)
+// TOOL 1 — CREATE TICKET (URL param-driven, pre-filled by Glean agent)
 // ══════════════════════════════════════════════════════════════════════════════
 
-// Delimiter format Glean is instructed to use (see agent prompt)
-const TICKET_START = '---TICKET---';
-const TICKET_END   = '---END TICKET---';
-
-function buildDiscoverPrompt(days, source, customer, customFields) {
-  const sourceText = source === 'all'
-    ? 'Gmail, Slack, Gong call recordings and notes, and internal documents'
-    : { gmail: 'Gmail', slack: 'Slack', gong: 'Gong call recordings and notes', notes: 'notes and internal documents' }[source] || 'all data sources';
-
-  const customerFilter = customer
-    ? `\nFocus specifically on communications and documents related to the customer: "${customer}".`
-    : '';
-
-  const filledFields = Object.values(customFields || {}).filter(f => f.value);
-  const projectContext = filledFields.length
-    ? `\n\nWhen describing suggested tickets, incorporate these pre-specified project field values:\n${filledFields.map(f => `- ${f.name}: ${f.label || f.value}`).join('\n')}`
-    : '';
-
-  return `You are a Jira ticket discovery assistant for BuildOps, a field service management software company. Search through the last ${days} days of ${sourceText} to identify actionable items that should become Jira tickets but likely haven't been tracked yet.${customerFilter}${projectContext}
-
-Look for:
-1. **Bugs** – Software defects or errors reported by customers or mentioned internally
-2. **Feature Requests** – New capabilities or improvements requested by customers or the sales team
-3. **Customer Issues** – Problems a customer is experiencing that need engineering or support attention
-4. **Action Items** – Specific commitments or follow-ups from meetings, calls, or email threads
-5. **Improvements** – Process or product improvements identified in recent discussions
-
-For each potential ticket, return it in EXACTLY this format (do not vary the field names or delimiters):
-
-${TICKET_START}
-TITLE: [Concise ticket title, max 100 characters]
-TYPE: [Bug / Story / Task / Feature Request / Improvement / Support]
-PRIORITY: [Critical / High / Medium / Low]
-CUSTOMER: [Customer name, or "Internal" if no specific customer]
-SOURCE: [Gmail / Slack / Gong / Notes / Other]
-SOURCE_DATE: [YYYY-MM-DD or approximate date]
-DESCRIPTION: [2–4 sentences describing the issue or request clearly]
-CONTEXT: [1–2 sentences on why this needs a ticket and any urgency signals]
-${TICKET_END}
-
-Rules:
-- Only suggest tickets for clearly actionable items
-- Do not suggest items that are too vague or already obviously tracked
-- Sort by priority (Critical first, then High, Medium, Low)
-- Return a maximum of 10 ticket suggestions
-- If no actionable items are found, say so clearly — do not invent tickets
-
-Begin searching now.`;
+// Parse URL query params from the Glean agent link
+function readUrlParams() {
+  const p = new URLSearchParams(window.location.search);
+  return {
+    project:     p.get('project')     || '',
+    summary:     p.get('summary')     || '',
+    taskType:    p.get('taskType')    || p.get('type') || '',
+    priority:    p.get('priority')    || '',
+    description: p.get('description') || '',
+    customer:    p.get('customer')    || '',
+    source:      p.get('source')      || '',
+    sourceDate:  p.get('sourceDate')  || '',
+    tenantId:    p.get('tenantId')    || '',
+    segment:     p.get('segment')     || '',
+    env:         p.get('env')         || '',
+    dept:        p.get('dept')        || '',
+    status:      p.get('status')      || '',
+  };
 }
 
-function parseDiscoveredTickets(text) {
-  const tickets = [];
-  let remaining = text;
-  let start;
-  while ((start = remaining.indexOf(TICKET_START)) !== -1) {
-    const end = remaining.indexOf(TICKET_END, start);
-    if (end === -1) break;
-    const block = remaining.slice(start + TICKET_START.length, end).trim();
-    remaining   = remaining.slice(end + TICKET_END.length);
-    const t = {};
-    for (const line of block.split('\n')) {
-      const colon = line.indexOf(':');
-      if (colon === -1) continue;
-      const key = line.slice(0, colon).trim().toUpperCase();
-      const val = line.slice(colon + 1).trim();
-      t[key] = val;
+// Map a free-text issue type string to a Jira issue type name
+function normalizeIssueType(str) {
+  const s = (str || '').toLowerCase().trim();
+  if (s.includes('bug'))                                             return 'Bug';
+  if (s.includes('story') || s.includes('feature') || s.includes('request')) return 'Story';
+  if (s.includes('improv'))                                         return 'Improvement';
+  if (s.includes('task') || s.includes('support') || s)            return 'Task';
+  return '';
+}
+
+// Map a free-text priority string to a Jira priority name
+function normalizePriority(str) {
+  const s = (str || '').toLowerCase().trim();
+  if (s.includes('critical') || s === 'p0' || s === 'highest') return 'Critical';
+  if (s.includes('high')     || s === 'p1')                    return 'High';
+  if (s.includes('medium')   || s === 'p2' || s.includes('moderate')) return 'Medium';
+  if (s.includes('low')      || s === 'p3' || s === 'lowest')  return 'Low';
+  return '';
+}
+
+// Fuzzy-match URL params to loaded Jira custom field names, pre-filling values
+function prefillCustomFieldsFromParams(params) {
+  const FUZZY_MAP = [
+    { param: 'tenantId', re: /tenant/i },
+    { param: 'segment',  re: /segment/i },
+    { param: 'env',      re: /environ/i },
+    { param: 'dept',     re: /depart/i },
+    { param: 'status',   re: /status/i },
+  ];
+
+  for (const [fieldId, cf] of Object.entries(projectCustomFieldValues)) {
+    for (const { param, re } of FUZZY_MAP) {
+      if (!re.test(cf.name) || !params[param]) continue;
+      const val   = params[param];
+      const input = document.querySelector(`[data-field-id="${fieldId}"]`);
+      if (!input) break;
+
+      if (input.tagName === 'SELECT') {
+        const opts  = Array.from(input.options);
+        const match = opts.find(o => o.text.toLowerCase() === val.toLowerCase())
+                   || opts.find(o => o.text.toLowerCase().includes(val.toLowerCase()));
+        if (match) {
+          input.value = match.value;
+          cf.value    = match.value;
+          cf.label    = match.dataset.label || match.text;
+        }
+      } else {
+        input.value = val;
+        cf.value    = val;
+        cf.label    = val;
+      }
+      break;
     }
-    if (t.TITLE) tickets.push(t);
   }
-  return tickets;
 }
 
-function renderDiscoveredTicket(t, idx, defaultProject) {
-  const typeClass  = typeBadgeClass(t.TYPE || '');
-  const prioClass  = 'badge-' + priorityClass(t.PRIORITY || 'medium');
-  const project    = defaultProject || '';
+// ── Direct ticket creation handler ─────────────────────────────────────────
 
-  return `<div class="discover-card" id="dcard-${idx}">
-    <div class="discover-card-header">
-      <div class="discover-card-title-group">
-        <div class="discover-card-badges">
-          <span class="badge ${typeClass}">${escapeHtml(t.TYPE || 'Task')}</span>
-          <span class="badge ${prioClass}">${escapeHtml(t.PRIORITY || 'Medium')}</span>
-        </div>
-        <div class="discover-card-title">${escapeHtml(t.TITLE || '')}</div>
-        <div class="discover-card-meta">
-          ${t.CUSTOMER ? `<span>Customer: <strong>${escapeHtml(t.CUSTOMER)}</strong></span>` : ''}
-          ${t.SOURCE ? `<span>Source: ${escapeHtml(t.SOURCE)}${t.SOURCE_DATE ? ` (${escapeHtml(t.SOURCE_DATE)})` : ''}</span>` : ''}
-        </div>
-      </div>
-    </div>
-    <div class="discover-card-body">
-      ${t.DESCRIPTION ? `<div class="discover-field">
-        <div class="discover-field-label">Description</div>
-        <div class="discover-field-value">${escapeHtml(t.DESCRIPTION)}</div>
-      </div>` : ''}
-      ${t.CONTEXT ? `<div class="discover-field">
-        <div class="discover-field-label">Context &amp; Urgency</div>
-        <div class="discover-field-value">${escapeHtml(t.CONTEXT)}</div>
-      </div>` : ''}
-    </div>
-    <div class="discover-card-footer" id="dcard-footer-${idx}">
-      <span></span>
-      <button class="action-btn" onclick="openCreateModal(${idx})">
-        <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-        Create in Jira
-      </button>
-    </div>
-  </div>`;
-}
-
-// Global store for discovered tickets (so modal can access them)
-let discoveredTickets = [];
-
-document.getElementById('discover-btn').addEventListener('click', async () => {
+document.getElementById('create-btn').addEventListener('click', async () => {
   const settings = getSettings();
-  if (!settings.gleanToken) {
-    showEl('discover-error');
-    document.getElementById('discover-error').textContent =
-      'No Glean API token. Open Settings (⚙) and add your token.';
+  if (!settings.jiraEmail || !settings.jiraToken) {
+    showEl('create-error');
+    document.getElementById('create-error').textContent =
+      'Please save your Jira credentials in Settings first.';
     document.getElementById('settings-panel').hidden = false;
     return;
   }
 
-  const days           = document.getElementById('discover-days').value;
-  const source         = document.getElementById('discover-source').value;
-  const customer       = document.getElementById('discover-customer').value.trim();
-  const defaultProject = document.getElementById('discover-project').value.trim();
-
-  const btn = document.getElementById('discover-btn');
-  btn.disabled = true;
-  hideEl('discover-error');
-  setHTML('discover-results', '');
-  showEl('discover-thinking');
-
-  try {
-    const prompt = buildDiscoverPrompt(days, source, customer, projectCustomFieldValues);
-    const payload = {
-      messages: [{ author: 'USER', fragments: [{ text: prompt }] }],
-      stream:   false,
-      saveChat: false,
-    };
-
-    const res = await fetch(`${PROXY_URL}/glean/rest/api/v1/chat`, {
-      method:  'POST',
-      headers: gleanHeaders(settings),
-      body:    JSON.stringify(payload),
-    });
-
-    if (!res.ok) {
-      const body = await res.text();
-      let detail = body;
-      try { detail = JSON.parse(body).message || body; } catch (_) {}
-      throw new Error(`Glean returned ${res.status}: ${detail}`);
-    }
-
-    const data     = await res.json();
-    const messages = data.messages || [];
-    const aiMsg    = messages.slice().reverse().find(m => m.author === 'GLEAN_AI') ||
-                     messages[messages.length - 1];
-
-    if (!aiMsg) throw new Error('No response from Glean. Check your token and backend URL.');
-
-    const rawText = (aiMsg.fragments || [])
-      .filter(f => typeof f.text === 'string')
-      .map(f => f.text)
-      .join('\n')
-      .trim();
-
-    discoveredTickets = parseDiscoveredTickets(rawText);
-
-    const resultsEl = document.getElementById('discover-results');
-
-    if (discoveredTickets.length === 0) {
-      // No structured tickets — render raw response as fallback
-      resultsEl.innerHTML = `
-        <div class="response-card">
-          <div class="response-card-label">Glean Response</div>
-          <div class="response-text">${renderMarkdown(rawText)}</div>
-        </div>`;
-    } else {
-      const cardsHtml = `
-        <div class="results-header">${discoveredTickets.length} ticket suggestion${discoveredTickets.length !== 1 ? 's' : ''} found</div>
-        ${discoveredTickets.map((t, i) => renderDiscoveredTicket(t, i, defaultProject)).join('')}`;
-      resultsEl.innerHTML = cardsHtml;
-    }
-
-  } catch (err) {
-    showEl('discover-error');
-    document.getElementById('discover-error').textContent = err.message;
-  } finally {
-    hideEl('discover-thinking');
-    btn.disabled = false;
-  }
-});
-
-// ── Create-in-Jira Modal ────────────────────────────────────────────────────
-
-let currentModalIdx = null;
-
-function openCreateModal(idx) {
-  const t       = discoveredTickets[idx];
-  const project = document.getElementById('discover-project').value.trim();
-
-  document.getElementById('m-summary').value  = t.TITLE || '';
-  document.getElementById('m-customer').value = (t.CUSTOMER && t.CUSTOMER.toLowerCase() !== 'internal') ? t.CUSTOMER : '';
-  document.getElementById('m-description').value = [
-    t.DESCRIPTION || '',
-    t.CONTEXT     ? `\n\nContext: ${t.CONTEXT}` : '',
-    t.SOURCE      ? `\n\nSource: ${t.SOURCE}${t.SOURCE_DATE ? ` (${t.SOURCE_DATE})` : ''}` : '',
-  ].join('').trim();
-
-  // Set selects via helper so custom dropdown labels refresh
-  setSelectValue('m-project', project || '');
-
-  const typeMap = {
-    'bug': 'Bug', 'story': 'Story', 'task': 'Task',
-    'feature request': 'Story', 'improvement': 'Improvement', 'support': 'Task',
-  };
-  setSelectValue('m-type', typeMap[(t.TYPE || 'task').toLowerCase()] || 'Task');
-
-  const prioMap = { 'critical': 'Critical', 'high': 'High', 'medium': 'Medium', 'low': 'Low' };
-  setSelectValue('m-priority', prioMap[(t.PRIORITY || 'medium').toLowerCase()] || 'Medium');
-
-  hideEl('modal-status');
-  document.getElementById('modal-status').className = 'modal-status';
-  document.getElementById('modal-status').textContent = '';
-  document.getElementById('modal-create-btn').disabled   = false;
-  document.getElementById('modal-create-btn').textContent = 'Create Ticket';
-  document.getElementById('modal-create-btn').innerHTML  = `
-    <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-    Create Ticket`;
-
-  currentModalIdx = idx;
-  document.getElementById('create-modal').classList.remove('hidden');
-}
-
-function closeModal() {
-  document.getElementById('create-modal').classList.add('hidden');
-  currentModalIdx = null;
-}
-
-document.getElementById('modal-close').addEventListener('click', closeModal);
-document.getElementById('modal-cancel').addEventListener('click', closeModal);
-
-// Close on overlay click
-document.getElementById('create-modal').addEventListener('click', (e) => {
-  if (e.target === document.getElementById('create-modal')) closeModal();
-});
-
-document.getElementById('modal-create-btn').addEventListener('click', async () => {
-  const settings = getSettings();
-  if (!settings.jiraEmail || !settings.jiraToken) {
-    const st = document.getElementById('modal-status');
-    st.textContent = 'Please save your Jira credentials in Settings first.';
-    st.className   = 'modal-status error';
-    showEl('modal-status');
-    return;
-  }
-
-  const summary  = document.getElementById('m-summary').value.trim();
-  const project  = document.getElementById('m-project').value.trim();
-  const issueType= document.getElementById('m-type').value;
-  const priority = document.getElementById('m-priority').value;
-  const customer = document.getElementById('m-customer').value.trim();
-  const desc     = document.getElementById('m-description').value.trim();
+  const summary   = document.getElementById('create-summary').value.trim();
+  const project   = document.getElementById('discover-project').value.trim();
+  const issueType = document.getElementById('create-type').value;
+  const priority  = document.getElementById('create-priority').value;
+  const customer  = document.getElementById('create-customer').value.trim();
+  const desc      = document.getElementById('create-description').value.trim();
 
   if (!summary || !project) {
-    const st = document.getElementById('modal-status');
-    st.textContent = 'Summary and Project Key are required.';
-    st.className   = 'modal-status error';
-    showEl('modal-status');
+    showEl('create-error');
+    document.getElementById('create-error').textContent =
+      'Summary and Project are required.';
     return;
   }
 
-  const btn = document.getElementById('modal-create-btn');
+  const btn = document.getElementById('create-btn');
   btn.disabled = true;
-  btn.innerHTML = `<span style="opacity:0.6">Creating…</span>`;
-  hideEl('modal-status');
+  btn.innerHTML = '<span style="opacity:0.6">Creating…</span>';
+  hideEl('create-error');
+  hideEl('create-success');
 
   try {
-    const adfContent = [];
-
-    if (desc) {
-      adfContent.push({
-        type: 'paragraph',
-        content: [{ type: 'text', text: desc }],
-      });
-    }
+    const adfContent = desc
+      ? [{ type: 'paragraph', content: [{ type: 'text', text: desc }] }]
+      : [];
 
     const fields = {
       project:     { key: project },
@@ -1084,10 +941,10 @@ document.getElementById('modal-create-btn').addEventListener('click', async () =
       },
     };
 
-    if (customer) fields.customfield_10297 = customer;
-    if (settings.accountId) fields.reporter = { accountId: settings.accountId };
+    if (customer)           fields.customfield_10297 = customer;
+    if (settings.accountId) fields.reporter          = { accountId: settings.accountId };
 
-    // Include any project-specific custom fields pre-filled in the discover form
+    // Include any project-specific custom fields (loaded + fuzzy-prefilled)
     for (const [fieldId, cf] of Object.entries(projectCustomFieldValues)) {
       if (!cf.value) continue;
       if (cf.type === 'option') {
@@ -1108,40 +965,35 @@ document.getElementById('modal-create-btn').addEventListener('click', async () =
     const data = await res.json();
 
     if (res.ok) {
-      const ticketUrl = `https://${JIRA_DOMAIN}/browse/${data.key}`;
-      const st = document.getElementById('modal-status');
-      st.innerHTML   = `Ticket created! <a href="${ticketUrl}" target="_blank">${data.key} →</a>`;
-      st.className   = 'modal-status success';
-      showEl('modal-status');
-
-      btn.innerHTML  = `<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg> Created`;
-
-      // Mark the card as created
-      if (currentModalIdx !== null) {
-        const card = document.getElementById(`dcard-${currentModalIdx}`);
-        if (card) {
-          card.classList.add('created');
-          const footer = document.getElementById(`dcard-footer-${currentModalIdx}`);
-          if (footer) {
-            footer.innerHTML = `<span class="created-label">
-              <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
-              Created: <a href="${ticketUrl}" target="_blank" style="color:var(--success)">${data.key}</a>
-            </span>`;
-          }
-        }
-      }
+      const ticketUrl  = `https://${JIRA_DOMAIN}/browse/${data.key}`;
+      const successEl  = document.getElementById('create-success');
+      successEl.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+        Ticket created: <a href="${ticketUrl}" target="_blank">${data.key} →</a>`;
+      showEl('create-success');
+      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg> Created`;
     } else {
       const msg = data.errorMessages?.join(', ') || JSON.stringify(data.errors) || 'Unknown error';
       throw new Error(msg);
     }
   } catch (err) {
-    const st = document.getElementById('modal-status');
-    st.textContent = `Error: ${err.message}`;
-    st.className   = 'modal-status error';
-    showEl('modal-status');
-    btn.disabled = false;
-    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg> Create Ticket`;
+    showEl('create-error');
+    document.getElementById('create-error').textContent = `Error: ${err.message}`;
+    btn.disabled  = false;
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg> Create in Jira`;
   }
+});
+
+// ── Modal (kept for reference; no longer triggered from Tab 1) ──────────────
+
+function closeModal() {
+  document.getElementById('create-modal').classList.add('hidden');
+}
+
+document.getElementById('modal-close').addEventListener('click', closeModal);
+document.getElementById('modal-cancel').addEventListener('click', closeModal);
+document.getElementById('create-modal').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('create-modal')) closeModal();
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
