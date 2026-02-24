@@ -550,6 +550,25 @@ body {
   font-style: italic;
 }
 
+/* Tooltip shown on hover when option text is truncated */
+.cs-tooltip {
+  position: fixed;
+  background: #0a0f17;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  padding: 6px 11px;
+  border-radius: 7px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.55);
+  z-index: 300;
+  pointer-events: none;
+  max-width: 280px;
+  white-space: normal;
+  word-break: break-word;
+  animation: fade-in 0.12s ease;
+}
+
 /* ── Buttons ─────────────────────────────────────────────────────── */
 .action-btn {
   display: inline-flex;

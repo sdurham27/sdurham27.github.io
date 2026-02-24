@@ -70,6 +70,51 @@ function setSelectValue(id, value) {
   if (typeof el._csUpdate === 'function') el._csUpdate();
 }
 
+// ── Option tooltip (hover 1.7 s to reveal full truncated label) ────────────
+let _tipEl = null;
+let _tipTimer = null;
+
+function _getTip() {
+  if (!_tipEl) {
+    _tipEl = document.createElement('div');
+    _tipEl.className = 'cs-tooltip';
+    _tipEl.hidden = true;
+    document.body.appendChild(_tipEl);
+  }
+  return _tipEl;
+}
+
+function showOptionTooltip(optEl, text) {
+  const tip      = _getTip();
+  const optRect  = optEl.getBoundingClientRect();
+  const panel    = optEl.closest('.cs-panel');
+  const panelRect = panel ? panel.getBoundingClientRect() : optRect;
+
+  tip.textContent = text;
+  tip.hidden = false;
+
+  // Default: appear to the right of the panel, vertically centred on the row
+  tip.style.top    = (optRect.top + optRect.height / 2) + 'px';
+  tip.style.transform = 'translateY(-50%)';
+  tip.style.left   = (panelRect.right + 10) + 'px';
+  tip.style.right  = 'auto';
+
+  // If it would bleed off the right edge, flip to the left side
+  requestAnimationFrame(() => {
+    const tipRect = tip.getBoundingClientRect();
+    if (tipRect.right > window.innerWidth - 8) {
+      tip.style.left  = 'auto';
+      tip.style.right = (window.innerWidth - panelRect.left + 10) + 'px';
+    }
+  });
+}
+
+function hideOptionTooltip() {
+  clearTimeout(_tipTimer);
+  _tipTimer = null;
+  if (_tipEl) _tipEl.hidden = true;
+}
+
 // ── Custom Searchable Select ────────────────────────────────────────────────
 // Converts every .select-wrapper on the page into a searchable dropdown.
 // The native <select> stays in the DOM (hidden) so existing JS that reads
@@ -239,6 +284,7 @@ function initCustomSelects() {
       trigger.setAttribute('aria-expanded', 'false');
       focusedIdx = -1;
       optionData.forEach(o => o.el.classList.remove('is-focused'));
+      hideOptionTooltip();
     }
 
     trigger.addEventListener('click', e => {
@@ -263,6 +309,17 @@ function initCustomSelects() {
 
     optionData.forEach(o => {
       o.el.addEventListener('click', () => selectValue(o.value));
+
+      // Show full label as tooltip after 1.7 s if text is truncated
+      o.el.addEventListener('mouseenter', () => {
+        clearTimeout(_tipTimer);
+        _tipTimer = setTimeout(() => {
+          if (o.el.scrollWidth > o.el.clientWidth) {
+            showOptionTooltip(o.el, o.label);
+          }
+        }, 1700);
+      });
+      o.el.addEventListener('mouseleave', hideOptionTooltip);
     });
 
     // ── Search filtering ──────────────────────────────────────────
