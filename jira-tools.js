@@ -204,7 +204,12 @@ function initCustomSelects() {
     });
   }
 
-  document.addEventListener('scroll', closeAll, true);
+  document.addEventListener('scroll', e => {
+    // Ignore scroll events that originate inside an open dropdown panel —
+    // those are the user scrolling through the list, not scrolling the page.
+    if (e.target && e.target.closest && e.target.closest('.cs-panel')) return;
+    closeAll();
+  }, true);
   window.addEventListener('resize', closeAll);
 
   document.querySelectorAll('.select-wrapper').forEach(wrapper => {
