@@ -115,76 +115,6 @@ function hideOptionTooltip() {
   if (_tipEl) _tipEl.hidden = true;
 }
 
-// ── User project history (Most Used group) ───────────────────────────────────
-// On each load, reads the localStorage cache to personalise the "Most Used"
-// optgroup BEFORE initCustomSelects() runs. The cache is refreshed in the
-// background so next visit picks up any changes.
-
-function getCachedUserProjects() {
-  try {
-    const raw = localStorage.getItem('jiraToolsUserProjects');
-    if (!raw) return null;
-    const { timestamp, projects } = JSON.parse(raw);
-    if (!projects || Date.now() - timestamp > 86400000) return null; // 24 h TTL
-    return projects;
-  } catch (_) { return null; }
-}
-
-// Replaces the "Most Used" optgroup in project selects with the user's top keys.
-function updateMostUsedGroup(keys) {
-  if (!keys || !keys.length) return;
-  ['discover-project', 'm-project'].forEach(selectId => {
-    const sel = document.getElementById(selectId);
-    if (!sel) return;
-    // Build value → label map from every non-Most-Used optgroup
-    const labelMap = {};
-    Array.from(sel.querySelectorAll('optgroup')).forEach(g => {
-      if (g.label === 'Most Used') return;
-      Array.from(g.querySelectorAll('option')).forEach(opt => {
-        if (opt.value && !labelMap[opt.value]) labelMap[opt.value] = opt.textContent.trim();
-      });
-    });
-    const group = Array.from(sel.querySelectorAll('optgroup')).find(g => g.label === 'Most Used');
-    if (!group) return;
-    group.innerHTML = keys
-      .filter(k => labelMap[k])
-      .map(k => `<option value="${k}">${labelMap[k]}</option>`)
-      .join('');
-  });
-}
-
-// Background: queries recent issues, tallies project usage, saves to cache.
-async function fetchUserProjectHistory() {
-  const settings = getSettings();
-  if (!settings.jiraEmail || !settings.jiraToken) return;
-  try {
-    const jql = encodeURIComponent(
-      '(reporter = currentUser() OR assignee = currentUser()) ORDER BY updated DESC'
-    );
-    const res = await fetch(
-      `${PROXY_URL}/rest/api/3/search/jql?jql=${jql}&maxResults=50&fields=project`,
-      { headers: jiraHeaders(settings) }
-    );
-    if (!res.ok) return;
-    const data   = await res.json();
-    const counts = {};
-    for (const issue of (data.issues || [])) {
-      const key = issue.fields?.project?.key;
-      if (key) counts[key] = (counts[key] || 0) + 1;
-    }
-    const top = Object.entries(counts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 8)
-      .map(([k]) => k);
-    if (top.length) {
-      localStorage.setItem('jiraToolsUserProjects', JSON.stringify({
-        timestamp: Date.now(),
-        projects:  top,
-      }));
-    }
-  } catch (_) {}
-}
-
 // ── Custom Searchable Select ────────────────────────────────────────────────
 // Converts every .select-wrapper on the page into a searchable dropdown.
 // The native <select> stays in the DOM (hidden) so existing JS that reads
@@ -204,12 +134,7 @@ function initCustomSelects() {
     });
   }
 
-  document.addEventListener('scroll', e => {
-    // Ignore scroll events that originate inside an open dropdown panel —
-    // those are the user scrolling through the list, not scrolling the page.
-    if (e.target && e.target.closest && e.target.closest('.cs-panel')) return;
-    closeAll();
-  }, true);
+  document.addEventListener('scroll', closeAll, true);
   window.addEventListener('resize', closeAll);
 
   document.querySelectorAll('.select-wrapper').forEach(wrapper => {
@@ -321,7 +246,7 @@ function initCustomSelects() {
     // ── Panel positioning (fixed, escapes all overflow ancestors) ─
     function positionPanel() {
       const rect = trigger.getBoundingClientRect();
-      const panelH = 360; // search + list max height estimate
+      const panelH = 270; // search + list max height estimate
       const spaceBelow = window.innerHeight - rect.bottom - 6;
       const spaceAbove = rect.top - 6;
 
@@ -791,322 +716,8 @@ function updateConnectNotice() {
   if (notice) notice.hidden = !!(s.jiraEmail && s.jiraToken);
 }
 
-// ── Generate Agent Prompt ────────────────────────────────────────────────────
-// Queries Jira createmeta for each major project, extracts custom fields and
-// their exact allowed values, then produces a ready-to-paste Glean system prompt.
-// If a Glean token is present, also searches Confluence for ticket routing docs
-// and includes relevant excerpts in the generated prompt.
-
-// Search Glean's Confluence connector for ticket type / project routing docs.
-async function searchConfluenceForTicketDocs(settings) {
-  if (!settings.gleanToken) return null;
-  const backend = settings.gleanBackend || DEFAULT_BACKEND;
-  try {
-    const res = await fetch(`https://${backend}/rest/api/v1/search`, {
-      method:  'POST',
-      headers: {
-        'Authorization': `Bearer ${settings.gleanToken}`,
-        'Content-Type':  'application/json',
-        'Accept':        'application/json',
-        ...(settings.jiraEmail ? { 'X-Glean-ActAs': settings.jiraEmail } : {}),
-      },
-      body: JSON.stringify({
-        query:             'jira project guide ticket types when to use which project',
-        pageSize:          10,
-        datasourceFilters: [{ datasource: 'confluence' }],
-      }),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return (data.results || []).length ? data.results : null;
-  } catch (_) { return null; }
-}
-
-async function generateAgentPrompt() {
-  const settings = getSettings();
-  const btn    = document.getElementById('gen-prompt-btn');
-  const status = document.getElementById('gen-prompt-status');
-
-  if (!settings.jiraEmail || !settings.jiraToken) {
-    status.textContent = 'Jira credentials required — save settings first.';
-    status.className   = 'settings-status error';
-    return;
-  }
-
-  btn.disabled    = true;
-  const hasGlean  = !!(settings.gleanToken);
-  btn.textContent = hasGlean ? 'Fetching Jira + Confluence data…' : 'Fetching Jira data…';
-  status.textContent = '';
-  status.className   = 'settings-status';
-
-  const KEY_PROJECTS = [
-    'SIP', 'DT', 'DV', 'BUOP',
-    'SERVICE', 'MOBILE', 'PLATFORM', 'FINOS', 'REPORTING', 'IX',
-    'CE', 'ANALYTICS', 'IP', 'QE', 'AI', 'CSOPS', 'REVOPS', 'CRM', 'API',
-  ];
-
-  // Run Jira createmeta fetches and Confluence search in parallel
-  const projectMeta = {};
-  const [, confluenceResults] = await Promise.all([
-    Promise.all(KEY_PROJECTS.map(async key => {
-      try {
-        const res = await fetch(
-          `${PROXY_URL}/rest/api/3/issue/createmeta?projectKeys=${key}&expand=projects.issuetypes.fields`,
-          { headers: jiraHeaders(settings) }
-        );
-        if (!res.ok) return;
-        const data = await res.json();
-        const proj = (data.projects || []).find(p => p.key === key);
-        if (proj) projectMeta[key] = proj;
-      } catch (_) {}
-    })),
-    searchConfluenceForTicketDocs(settings),
-  ]);
-
-  if (!Object.keys(projectMeta).length) {
-    status.textContent = 'Could not fetch project data. Check credentials.';
-    status.className   = 'settings-status error';
-    btn.disabled    = false;
-    btn.textContent = 'Generate Agent Prompt';
-    return;
-  }
-
-  if (confluenceResults) {
-    status.textContent = `Included ${confluenceResults.length} Confluence result${confluenceResults.length !== 1 ? 's' : ''} in routing guide.`;
-    status.className   = 'settings-status success';
-  }
-
-  document.getElementById('prompt-output').value = buildAgentPromptText(projectMeta, confluenceResults);
-  document.getElementById('prompt-modal').classList.remove('hidden');
-  btn.disabled    = false;
-  btn.textContent = 'Regenerate';
-}
-
-function buildAgentPromptText(projectMeta, confluenceResults) {
-  const SKIP_NAMES   = /sprint|epic link|epic name|story point|rank|flagged|team|business value|parent link|development|release notes?|sla|start date|actual (start|end)|customer request|feature link|fix version/i;
-  const SKIP_CUSTOMS = /gh-sprint|gh-epic|gh-ranking|com\.pyxis/i;
-  const SKIP_IDS     = new Set(['customfield_10297']); // customer name handled via ?customer= param
-
-  // Build per-project field reference section
-  const projectSections = [];
-  for (const [key, proj] of Object.entries(projectMeta).sort((a, b) => a[0].localeCompare(b[0]))) {
-    const issueTypes = [...new Set((proj.issuetypes || []).map(it => it.name).filter(Boolean))];
-    const seen = new Set();
-    const customFields = [];
-
-    for (const issueType of (proj.issuetypes || [])) {
-      for (const [fieldId, fieldDef] of Object.entries(issueType.fields || {})) {
-        if (!fieldId.startsWith('customfield_')) continue;
-        if (seen.has(fieldId) || SKIP_IDS.has(fieldId)) continue;
-        const schema = fieldDef.schema || {};
-        const name   = fieldDef.name || fieldId;
-        if (SKIP_NAMES.test(name))              continue;
-        if (SKIP_CUSTOMS.test(schema.custom || '')) continue;
-        if (!['string', 'number', 'option'].includes(schema.type)) continue;
-        seen.add(fieldId);
-        customFields.push({
-          name, type: schema.type,
-          allowedValues: fieldDef.allowedValues || null,
-          required: fieldDef.required || false,
-        });
-        if (customFields.length >= 12) break;
-      }
-      if (customFields.length >= 12) break;
-    }
-
-    const lines = [`#### ${key} — ${proj.name}`];
-    lines.push(`**Issue types:** ${issueTypes.join(' | ')}`);
-    if (customFields.length) {
-      lines.push('**Custom fields (use ONLY these exact values):**');
-      for (const cf of customFields) {
-        const reqTag = cf.required ? ' *(required)*' : '';
-        if (cf.type === 'option' && cf.allowedValues?.length) {
-          const opts = cf.allowedValues.map(v => v.value || v.name || '').filter(Boolean);
-          lines.push(`- **${cf.name}**${reqTag}: \`${opts.join('` | `')}\``);
-        } else {
-          lines.push(`- **${cf.name}**${reqTag}: [${cf.type} — enter value]`);
-        }
-      }
-    }
-    projectSections.push(lines.join('\n'));
-  }
-
-  const fieldRef  = projectSections.join('\n\n');
-  const base      = 'https://sdurham27.github.io/jira-tools.html';
-  const generated = new Date().toLocaleDateString();
-
-  // Build Confluence reference section from Glean search results (if available)
-  let confluenceSection = '';
-  if (confluenceResults && confluenceResults.length) {
-    const excerpts = confluenceResults.slice(0, 8).map(r => {
-      const title   = r.document?.title || r.title || 'Untitled';
-      const url     = r.document?.url || r.url || '';
-      const snippet = (r.snippets || []).map(s => s.text || '').filter(Boolean).join(' ')
-                   || r.snippet || r.excerpt || '';
-      let entry = `**${title}**`;
-      if (url) entry += `\n*${url}*`;
-      if (snippet) {
-        const clean = snippet.replace(/\s+/g, ' ').trim().slice(0, 500);
-        entry += `\n> ${clean}`;
-      }
-      return entry;
-    }).join('\n\n');
-    confluenceSection = `\n\n---\n\n### Confluence Reference\n*Retrieved from your Confluence via Glean — use these excerpts to inform project routing decisions:*\n\n${excerpts}`;
-  }
-
-  return `# Glean Agent: Jira Ticket Creator
-## System Prompt
-
-You are a Jira ticket discovery assistant for **BuildOps**, a SaaS platform for commercial contractors (HVAC, plumbing, electrical, mechanical). Search recent Gmail, Slack, Gong call recordings, and internal documents to find actionable items that should become Jira tickets — then present each as a pre-filled creation link.
-
----
-
-### How This Works
-
-1. Search the last 14 days (or as specified) of Gmail, Slack, Gong, and Docs
-2. Identify items that are actionable, specific, and not obviously already tracked
-3. For each item, build a pre-filled URL (format below) and present it as a clickable link
-4. Sort by priority: Critical → High → Medium → Low; max 10 suggestions
-
----
-
-### Ticket Types
-
-Only create tickets of the following types. Each maps to a specific project + issuetype.
-
-| Ticket Type | Project | issuetype | When to use |
-|---|---|---|---|
-| Product Question | \`SIP\` | \`Product Question\` | Product behavior is unclear or ambiguous AFTER checking docs, OpsGPT/Glean, and validating internally with team |
-| Feature Escalation Request | \`SIP\` | \`Feature Escalation Request\` | Customer feature need with strategic importance, revenue/churn risk, or go-live dependency |
-| Bug (customer-reported) | \`BUOP\` | \`Bug\` | Broken functionality reported externally via support/Intercom |
-| Bug (internal) | \`{squad}\` | \`Bug\` | Internally found bug — use Squad Ownership Registry to pick the right project key |
-| Data Task | \`DT\` | \`Data Task\` | Data manipulation needed in BuildOps database (import, update, delete, ETL, discovery) |
-| DevOps Request | \`DV\` | \`Task\` | DevOps, CI/CD, infrastructure, or tooling requests |
-
-**Do NOT create tickets for:**
-- General how-to / training questions → use Confluence or OpsGPT/Glean
-- Non-strategic enhancement requests → email support with subject "Feature Request"
-- Flatfile bugs → create a SIP Product Question under "Data Update Module"
-- PS data or migration requests → discuss with Implementation team first
-- Import errors / tooling bugs → use #cx_Data_Tasks Slack channel
-
----
-
-### URL Format (by ticket type)
-
-**Product Question (SIP)**
-\`${base}?project=SIP&taskType=Product+Question&summary={text}&priority={level}&description={text}&customer={name}&source={src}&sourceDate={YYYY-MM-DD}\`
-
-**Feature Escalation Request (SIP)**
-\`${base}?project=SIP&taskType=Feature+Escalation+Request&summary={text}&priority={level}&description={text}&customer={name}&source={src}&sourceDate={YYYY-MM-DD}\`
-
-**Bug — customer-reported (BUOP)**
-\`${base}?project=BUOP&taskType=Bug&summary={text}&priority={level}&description={text}&customer={name}&tenantId={id}&source={src}&sourceDate={YYYY-MM-DD}\`
-
-**Bug — internal (use squad project key)**
-\`${base}?project={SQUAD}&taskType=Bug&summary={text}&priority={level}&description={text}&source={src}&sourceDate={YYYY-MM-DD}\`
-
-**Data Task (DT)**
-\`${base}?project=DT&taskType=Data+Task&summary={text}&priority={level}&description={text}&customer={name}&segment={tier}&tenantId={id}&source={src}&sourceDate={YYYY-MM-DD}\`
-
-**DevOps Request (DV)**
-\`${base}?project=DV&taskType=Task&summary={text}&priority={level}&description={text}&source={src}&sourceDate={YYYY-MM-DD}\`
-
-**Common field constraints:**
-- \`summary\` — Concise title, max 80 chars, URL-encoded.
-- \`taskType\` — MUST exactly match the issuetype column above for the chosen ticket type.
-- \`priority\` — MUST be EXACTLY one of: \`Critical\` | \`High\` | \`Medium\` | \`Low\`
-- \`description\` — 2–4 sentence description, URL-encoded.
-- \`customer\` — Account/customer name. Omit if internal.
-- \`tenantId\` — Jira tenant/account ID. Include when available for bugs and data tasks.
-- \`segment\` — \`Corporate\` | \`Mid-Market\` | \`Enterprise\` | \`Strategic\`
-- \`source\` — \`Gmail\` | \`Slack\` | \`Gong\` | \`Notes\`
-- \`sourceDate\` — \`YYYY-MM-DD\`
-
-For project-specific custom fields, append them using the **exact parameter names and values** from the Project Field Reference below.${confluenceSection}
-
----
-
-### Project Field Reference
-*Auto-generated from Jira on ${generated}. Use ONLY these exact values.*
-
-The customer name is always passed via \`customer=\` — do not duplicate it here.
-For each project, use the listed custom field names as URL parameters when you know the value.
-
-${fieldRef}
-
----
-
-### Priority Guidelines
-
-| Priority | When |
-|---|---|
-| **Critical** | Production down, customer blocker, SLA breach, churn risk |
-| **High** | Customer-impacting bug, overdue commitment, strategic account request |
-| **Medium** | Enhancement, non-urgent bug, internal improvement |
-| **Low** | Nice-to-have, low-impact, future idea |
-
----
-
-### Output Format
-
-Present each item as:
-
-**{N}. {emoji} {Type} — {Priority} | {Customer or "Internal"}**
-**{Summary}**
-
-{2–3 sentence description}
-
-[➕ Create this ticket]({pre-filled URL})
-
----
-
-**Examples:**
-
-**1. 🐛 Bug — High | Acme Corp**
-**Mobile app crashes when saving work orders with photos**
-
-Acme Corp's ops manager reported on a Gong call that the mobile app crashes when saving work orders with photo attachments. Reproduced on both iOS and Android. Blocking their field crew from completing work orders.
-
-[➕ Create this ticket](${base}?project=BUOP&summary=Mobile+app+crashes+saving+work+orders+with+photos&taskType=Bug&priority=High&customer=Acme+Corp&source=Gong&sourceDate=2024-02-18&description=Mobile+app+crashes+when+saving+work+orders+with+photo+attachments.+Reproduced+on+iOS+and+Android.)
-
----
-
-**2. ❓ Product Question — Medium | Beta Corp**
-**Clarify expected behavior when pricebook item is archived mid-job**
-
-Beta Corp's implementation manager asked what should happen when a pricebook item is archived while referenced on an open job. Docs and Glean were checked with no clear answer; internal team could not confirm intended behavior.
-
-[➕ Create this ticket](${base}?project=SIP&summary=Clarify+expected+behavior+when+pricebook+item+archived+mid-job&taskType=Product+Question&priority=Medium&customer=Beta+Corp&source=Slack&sourceDate=2024-02-18&description=Customer+asked+what+happens+when+a+pricebook+item+is+archived+while+referenced+on+an+open+job.+Docs+and+Glean+checked.+Internal+team+could+not+confirm.)
-
----
-
-**3. 📊 Data Task — High | Gamma Corp**
-**Bulk-assign Account Managers to all Customers (800 records)**
-
-Gamma Corp wants to start using the Account Manager field and has provided a spreadsheet of 800 customer-to-AM mappings. Bulk update is not possible through the UI.
-
-[➕ Create this ticket](${base}?project=DT&summary=Bulk+assign+Account+Managers+to+all+Customers&taskType=Data+Task&priority=High&customer=Gamma+Corp&segment=Enterprise&tenantId=12345&source=Gong&sourceDate=2024-02-18&description=Customer+wants+Account+Manager+field+populated+for+800+customers.+Bulk+update+not+available+in+UI.+Mapping+spreadsheet+provided.)
-
----
-
-### Behavior Rules
-
-- **Use only the six ticket types above.** Do not create Story, Improvement, or ad-hoc Task tickets.
-- **Exact values only.** For any option/dropdown field, use ONLY the values from the Project Field Reference above.
-- **taskType must exactly match** the issuetype for the chosen ticket type — copy it verbatim from the Ticket Types table.
-- **Don't hallucinate.** Only suggest tickets based on content you actually found.
-- **No duplicates.** Skip items that appear already tracked in Jira.
-- **One ticket per issue.** Merge duplicate reports from multiple sources into one.
-- **Always include the link.** Every suggestion MUST have a working pre-filled URL.
-`;
-}
-
 // Restore settings on load
 window.addEventListener('DOMContentLoaded', () => {
-  // Personalise "Most Used" from cache BEFORE building the custom select UI
-  updateMostUsedGroup(getCachedUserProjects());
-
   // Initialize all searchable dropdowns before restoring any values
   initCustomSelects();
 
@@ -1175,9 +786,6 @@ window.addEventListener('DOMContentLoaded', () => {
       loadProjectCustomFields(urlParams.project, urlParams);
     }
   }
-
-  // Background: refresh project history cache so next visit has personalised Most Used
-  fetchUserProjectHistory();
 });
 
 // ── Tab Navigation ──────────────────────────────────────────────────────────
@@ -1232,19 +840,10 @@ function readUrlParams() {
 // Map a free-text issue type string to a Jira issue type name
 function normalizeIssueType(str) {
   const s = (str || '').toLowerCase().trim();
-  // SIP-specific types — must match before generic checks
-  if (s === 'product question' || s.includes('product question'))             return 'Product Question';
-  if (s === 'feature escalation request' || s.includes('feature escalation')) return 'Feature Escalation Request';
-  // DT types
-  if (s === 'data task' || s.includes('data task'))                           return 'Data Task';
-  if (s === 'import')                                                          return 'Import';
-  if (s === 'update data' || s.includes('update data'))                       return 'Update Data';
-  if (s === 'delete data' || s.includes('delete data'))                       return 'Delete Data';
-  if (s === 'full etl' || s.includes('etl'))                                  return 'Full ETL';
-  if (s === 'discovery')                                                       return 'Discovery';
-  // Standard types
-  if (s.includes('bug'))                                                       return 'Bug';
-  if (s.includes('task'))                                                      return 'Task';
+  if (s.includes('bug'))                                             return 'Bug';
+  if (s.includes('story') || s.includes('feature') || s.includes('request')) return 'Story';
+  if (s.includes('improv'))                                         return 'Improvement';
+  if (s.includes('task') || s.includes('support') || s)            return 'Task';
   return '';
 }
 
@@ -1395,30 +994,6 @@ document.getElementById('modal-close').addEventListener('click', closeModal);
 document.getElementById('modal-cancel').addEventListener('click', closeModal);
 document.getElementById('create-modal').addEventListener('click', (e) => {
   if (e.target === document.getElementById('create-modal')) closeModal();
-});
-
-// ── Generate Agent Prompt modal ──────────────────────────────────────────────
-
-document.getElementById('gen-prompt-btn').addEventListener('click', generateAgentPrompt);
-
-function closePromptModal() {
-  document.getElementById('prompt-modal').classList.add('hidden');
-}
-
-document.getElementById('prompt-modal-close').addEventListener('click', closePromptModal);
-document.getElementById('prompt-modal-close-btn').addEventListener('click', closePromptModal);
-document.getElementById('prompt-modal').addEventListener('click', (e) => {
-  if (e.target === document.getElementById('prompt-modal')) closePromptModal();
-});
-
-document.getElementById('copy-prompt-btn').addEventListener('click', () => {
-  const ta  = document.getElementById('prompt-output');
-  const btn = document.getElementById('copy-prompt-btn');
-  ta.select();
-  document.execCommand('copy');
-  const orig = btn.innerHTML;
-  btn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg> Copied!`;
-  setTimeout(() => { btn.innerHTML = orig; }, 2000);
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
