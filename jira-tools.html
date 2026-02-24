@@ -126,8 +126,98 @@
         </div>
 
         <div class="field-group">
-          <label for="discover-project">Default Jira Project Key <span class="label-hint">(for ticket creation)</span></label>
-          <input type="text" id="discover-project" placeholder="e.g. ENG, CS, SUPPORT" style="text-transform:uppercase" />
+          <label for="discover-project">Default Jira Project <span class="label-hint">(for ticket creation)</span></label>
+          <div class="select-wrapper">
+            <select id="discover-project">
+              <option value="">— Select a project —</option>
+              <optgroup label="Engineering &amp; Product">
+                <option value="ACCT">Accounting Integrations (ACCT)</option>
+                <option value="ACCTQBD">Accounting Integrations QBD (ACCTQBD)</option>
+                <option value="ACCTINT1">Accounting Integrations - Team 1 (ACCTINT1)</option>
+                <option value="ACCTINTA">Accounting Integrations - Team A (ACCTINTA)</option>
+                <option value="AI">AI (AI)</option>
+                <option value="AIF">AI Features (AIF)</option>
+                <option value="ANALYTICS">Analytics (ANALYTICS)</option>
+                <option value="API">Open APIs (API)</option>
+                <option value="ASSETS">Assets (ASSETS)</option>
+                <option value="BUOP">BUILDOPS (BUOP)</option>
+                <option value="CC">Customer Commitments (CC)</option>
+                <option value="CE">Customer Engineering (CE)</option>
+                <option value="CTI">Coordinated Tech Initiatives (CTI)</option>
+                <option value="DESIGN">Product Design (DESIGN)</option>
+                <option value="DEVEX">Dev Experience (DEVEX)</option>
+                <option value="DO">Data Onboarding Tooling (DO)</option>
+                <option value="DT">Data Tasks (DT)</option>
+                <option value="DV">DevOps (DV)</option>
+                <option value="FINOS">FinancialOS (FINOS)</option>
+                <option value="FS">Foundational Services (FS)</option>
+                <option value="IP">Inventory &amp; Purchasing (IP)</option>
+                <option value="ISA">Integration Solution Architect (ISA)</option>
+                <option value="IVC">Implementation VAR Channel (IVC)</option>
+                <option value="IX">Implementation Experience (IX)</option>
+                <option value="JLT">JLT (JLT)</option>
+                <option value="KR">Kelly Rollouts (KR)</option>
+                <option value="LE">Labor &amp; Equipment (LE)</option>
+                <option value="MOBILE">Mobile (MOBILE)</option>
+                <option value="OS">Data Onboarding Support (OS)</option>
+                <option value="PLATFORM">Platform (PLATFORM)</option>
+                <option value="PROD">Product/Design (PROD)</option>
+                <option value="PROJECT">Project Management (PROJECT)</option>
+                <option value="PSR">PS Request (PSR)</option>
+                <option value="QE">Quality Engineering (QE)</option>
+                <option value="REL">Releases (REL)</option>
+                <option value="REPORTING">Reporting (REPORTING)</option>
+                <option value="CRM">Sales &amp; CRM (CRM)</option>
+                <option value="SA">Solution Architects (SA)</option>
+                <option value="SERVICE">Service (SERVICE)</option>
+                <option value="SHAR">Shared-Services (SHAR)</option>
+                <option value="SIP">SIP (SIP)</option>
+                <option value="SOAJ">System of Action Jira (SOAJ)</option>
+                <option value="SOC">SOC (SOC)</option>
+                <option value="STAFF">Staff Engineering (STAFF)</option>
+                <option value="TO">Tooling (TO)</option>
+              </optgroup>
+              <optgroup label="Business &amp; Operations">
+                <option value="CSOPS">CS Ops (CSOPS)</option>
+                <option value="DACI">DACI (DACI)</option>
+                <option value="IOOT">IT Onboarding/Offboarding (IOOT)</option>
+                <option value="PML">Product Marketing Launches (PML)</option>
+                <option value="PPM">Projects Project Management (PPM)</option>
+                <option value="RCAS">RCAS (RCAS)</option>
+                <option value="REVOPS">Revenue Operations (REVOPS)</option>
+              </optgroup>
+              <optgroup label="Planning (JPD)">
+                <option value="ACI">AccInt Planning (ACI)</option>
+                <option value="AIP">AI Planning (AIP)</option>
+                <option value="AP">Analytics Planning (AP)</option>
+                <option value="AS">Assets Planning (AS)</option>
+                <option value="BPS">BuildOps Product Strategy (BPS)</option>
+                <option value="CTIP">Coordinated Tech Initiative Planning (CTIP)</option>
+                <option value="DES">Design Planning (DES)</option>
+                <option value="DP">Data Onboarding Planning (DP)</option>
+                <option value="FP">FinancialOS Planning (FP)</option>
+                <option value="FSP">Foundational Services Planning (FSP)</option>
+                <option value="INVOICE">Invoicing &amp; Payments Planning (INVOICE)</option>
+                <option value="IPP">IP Planning (IPP)</option>
+                <option value="ISP">Intake &amp; Scheduling Planning (ISP)</option>
+                <option value="IXP">Implementation Experience Planning (IXP)</option>
+                <option value="LEP">LE Planning (LEP)</option>
+                <option value="MDS">My Discovery Space (MDS)</option>
+                <option value="MOB">Mobile Planning (MOB)</option>
+                <option value="PP">Platform Planning (PP)</option>
+                <option value="PRD">ProdOps (PRD)</option>
+                <option value="PROJ">Projects Planning (PROJ)</option>
+                <option value="QEP">Quality Engineering Planning (QEP)</option>
+                <option value="SC">Sales + CRM Planning (SC)</option>
+                <option value="SER">Service Planning (SER)</option>
+                <option value="SHR">Shared Services Planning (SHR)</option>
+                <option value="SOAP">System of Action Planning (SOAP)</option>
+                <option value="TP">Template Project (TP)</option>
+                <option value="CTIPO">TO ARCHIVE - CTIP (CTIPO)</option>
+              </optgroup>
+            </select>
+            <svg class="select-arrow" viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M7 10l5 5 5-5z"/></svg>
+          </div>
         </div>
 
         <button class="action-btn" id="discover-btn">
@@ -231,8 +321,98 @@
       </div>
       <div class="field-row">
         <div class="field-group">
-          <label for="m-project">Project Key <span class="req">*</span></label>
-          <input type="text" id="m-project" placeholder="e.g. ENG" style="text-transform:uppercase" />
+          <label for="m-project">Project <span class="req">*</span></label>
+          <div class="select-wrapper">
+            <select id="m-project">
+              <option value="">— Select —</option>
+              <optgroup label="Engineering &amp; Product">
+                <option value="ACCT">Accounting Integrations (ACCT)</option>
+                <option value="ACCTQBD">Accounting Integrations QBD (ACCTQBD)</option>
+                <option value="ACCTINT1">Accounting Integrations - Team 1 (ACCTINT1)</option>
+                <option value="ACCTINTA">Accounting Integrations - Team A (ACCTINTA)</option>
+                <option value="AI">AI (AI)</option>
+                <option value="AIF">AI Features (AIF)</option>
+                <option value="ANALYTICS">Analytics (ANALYTICS)</option>
+                <option value="API">Open APIs (API)</option>
+                <option value="ASSETS">Assets (ASSETS)</option>
+                <option value="BUOP">BUILDOPS (BUOP)</option>
+                <option value="CC">Customer Commitments (CC)</option>
+                <option value="CE">Customer Engineering (CE)</option>
+                <option value="CTI">Coordinated Tech Initiatives (CTI)</option>
+                <option value="DESIGN">Product Design (DESIGN)</option>
+                <option value="DEVEX">Dev Experience (DEVEX)</option>
+                <option value="DO">Data Onboarding Tooling (DO)</option>
+                <option value="DT">Data Tasks (DT)</option>
+                <option value="DV">DevOps (DV)</option>
+                <option value="FINOS">FinancialOS (FINOS)</option>
+                <option value="FS">Foundational Services (FS)</option>
+                <option value="IP">Inventory &amp; Purchasing (IP)</option>
+                <option value="ISA">Integration Solution Architect (ISA)</option>
+                <option value="IVC">Implementation VAR Channel (IVC)</option>
+                <option value="IX">Implementation Experience (IX)</option>
+                <option value="JLT">JLT (JLT)</option>
+                <option value="KR">Kelly Rollouts (KR)</option>
+                <option value="LE">Labor &amp; Equipment (LE)</option>
+                <option value="MOBILE">Mobile (MOBILE)</option>
+                <option value="OS">Data Onboarding Support (OS)</option>
+                <option value="PLATFORM">Platform (PLATFORM)</option>
+                <option value="PROD">Product/Design (PROD)</option>
+                <option value="PROJECT">Project Management (PROJECT)</option>
+                <option value="PSR">PS Request (PSR)</option>
+                <option value="QE">Quality Engineering (QE)</option>
+                <option value="REL">Releases (REL)</option>
+                <option value="REPORTING">Reporting (REPORTING)</option>
+                <option value="CRM">Sales &amp; CRM (CRM)</option>
+                <option value="SA">Solution Architects (SA)</option>
+                <option value="SERVICE">Service (SERVICE)</option>
+                <option value="SHAR">Shared-Services (SHAR)</option>
+                <option value="SIP">SIP (SIP)</option>
+                <option value="SOAJ">System of Action Jira (SOAJ)</option>
+                <option value="SOC">SOC (SOC)</option>
+                <option value="STAFF">Staff Engineering (STAFF)</option>
+                <option value="TO">Tooling (TO)</option>
+              </optgroup>
+              <optgroup label="Business &amp; Operations">
+                <option value="CSOPS">CS Ops (CSOPS)</option>
+                <option value="DACI">DACI (DACI)</option>
+                <option value="IOOT">IT Onboarding/Offboarding (IOOT)</option>
+                <option value="PML">Product Marketing Launches (PML)</option>
+                <option value="PPM">Projects Project Management (PPM)</option>
+                <option value="RCAS">RCAS (RCAS)</option>
+                <option value="REVOPS">Revenue Operations (REVOPS)</option>
+              </optgroup>
+              <optgroup label="Planning (JPD)">
+                <option value="ACI">AccInt Planning (ACI)</option>
+                <option value="AIP">AI Planning (AIP)</option>
+                <option value="AP">Analytics Planning (AP)</option>
+                <option value="AS">Assets Planning (AS)</option>
+                <option value="BPS">BuildOps Product Strategy (BPS)</option>
+                <option value="CTIP">Coordinated Tech Initiative Planning (CTIP)</option>
+                <option value="DES">Design Planning (DES)</option>
+                <option value="DP">Data Onboarding Planning (DP)</option>
+                <option value="FP">FinancialOS Planning (FP)</option>
+                <option value="FSP">Foundational Services Planning (FSP)</option>
+                <option value="INVOICE">Invoicing &amp; Payments Planning (INVOICE)</option>
+                <option value="IPP">IP Planning (IPP)</option>
+                <option value="ISP">Intake &amp; Scheduling Planning (ISP)</option>
+                <option value="IXP">Implementation Experience Planning (IXP)</option>
+                <option value="LEP">LE Planning (LEP)</option>
+                <option value="MDS">My Discovery Space (MDS)</option>
+                <option value="MOB">Mobile Planning (MOB)</option>
+                <option value="PP">Platform Planning (PP)</option>
+                <option value="PRD">ProdOps (PRD)</option>
+                <option value="PROJ">Projects Planning (PROJ)</option>
+                <option value="QEP">Quality Engineering Planning (QEP)</option>
+                <option value="SC">Sales + CRM Planning (SC)</option>
+                <option value="SER">Service Planning (SER)</option>
+                <option value="SHR">Shared Services Planning (SHR)</option>
+                <option value="SOAP">System of Action Planning (SOAP)</option>
+                <option value="TP">Template Project (TP)</option>
+                <option value="CTIPO">TO ARCHIVE - CTIP (CTIPO)</option>
+              </optgroup>
+            </select>
+            <svg class="select-arrow" viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M7 10l5 5 5-5z"/></svg>
+          </div>
         </div>
         <div class="field-group">
           <label for="m-type">Issue Type</label>
