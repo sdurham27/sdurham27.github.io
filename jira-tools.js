@@ -929,22 +929,60 @@ For project-specific custom fields, append them using the **exact parameter name
 
 ### Project Routing
 
+Projects are organized by functional area. Use the key that matches where the work belongs:
+
+**Field Service & Mobile**
 | Project | Use when |
 |---|---|
-| \`SERVICE\` | Web app bugs, work orders, scheduling, dispatch |
-| \`MOBILE\` | iOS or Android app issues |
-| \`PLATFORM\` | Infrastructure, APIs, auth, performance |
-| \`FINOS\` | Invoicing, payments, accounting integrations |
+| \`SERVICE\` | Field service jobs, work orders, scheduling, dispatch, web app bugs |
+| \`MOBILE\` | iOS or Android app bugs or requests |
+| \`IP\` | Inventory, parts, purchasing |
+| \`ASSETS\` | Asset tracking and management |
+| \`LE\` | Labor and equipment |
+
+**Financial & Accounting**
+| Project | Use when |
+|---|---|
+| \`FINOS\` | Invoicing, payments, financial OS features |
+| \`ACCT\` | Accounting integrations |
+
+**Reporting & Data**
+| Project | Use when |
+|---|---|
 | \`REPORTING\` | Reports, dashboards, data exports |
-| \`IX\` | Implementation and onboarding |
+| \`ANALYTICS\` | Data analytics, insights, BI |
+
+**Customer Commitments & Services**
+| Project | Use when |
+|---|---|
+| \`CC\` | Promises or commitments made to customers |
+| \`PSR\` | Professional services requests |
+| \`IX\` | Implementation and customer onboarding |
 | \`CE\` | Customer engineering, custom integrations |
-| \`ANALYTICS\` | Data analytics, insights |
-| \`IP\` | Inventory, purchasing, parts management |
-| \`AI\` | AI features |
-| \`API\` | Public API issues or requests |
+
+**Platform, API & Infrastructure**
+| Project | Use when |
+|---|---|
+| \`PLATFORM\` | Core infrastructure, auth, performance, platform bugs |
+| \`API\` | Public/open API issues or feature requests |
+| \`FS\` | Foundational services |
+| \`DV\` | DevOps, CI/CD, infrastructure |
+| \`DEVEX\` | Developer experience, internal tooling |
+
+**Product & AI**
+| Project | Use when |
+|---|---|
+| \`AI\` | AI features and capabilities |
+| \`CRM\` | Sales & CRM features |
+
+**Quality & Operations**
+| Project | Use when |
+|---|---|
+| \`QE\` | Quality engineering, test automation |
 | \`CSOPS\` | CS operations, internal CS tools |
 | \`REVOPS\` | Revenue operations |
-| \`CRM\` | Sales & CRM features |
+
+When in doubt: \`SERVICE\` for customer-facing web bugs, \`PLATFORM\` for infrastructure, \`CC\` for customer commitments, \`IX\` for onboarding blockers.
 
 ---
 

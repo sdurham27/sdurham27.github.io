@@ -54,29 +54,64 @@ Common customer segments: SMB, Mid-Market, Enterprise
 
 ### Project Routing Guide
 
-Use this to choose the correct `project` key for each ticket:
+Use this to choose the correct `project` key for each ticket. Projects are organized by functional area:
 
+**Field Service & Mobile**
 | Project Key | Use When |
 |---|---|
-| `SERVICE` | Web app bugs, service jobs, work orders, scheduling, dispatch |
-| `MOBILE` | iOS or Android app issues |
-| `PLATFORM` | Core infrastructure, APIs, performance, auth, permissions |
-| `FINOS` | Financial OS — invoicing, payments, accounting integrations |
-| `REPORTING` | Reports, dashboards, data exports, analytics views |
-| `IX` | Implementation and onboarding issues for new customers |
-| `CE` | Customer engineering, custom integrations, data migrations |
-| `ANALYTICS` | Data analytics, insights, BI |
-| `IP` | Inventory, purchasing, parts management |
-| `AI` | AI features and capabilities |
-| `API` | Public/open API issues or requests |
+| `SERVICE` | Field service jobs, work orders, scheduling, dispatch, web app bugs in the service domain |
+| `MOBILE` | iOS or Android app bugs or requests |
+| `IP` | Inventory, parts, purchasing bugs or requests |
 | `ASSETS` | Asset tracking and management |
-| `DEVEX` | Developer experience, tooling, internal dev infrastructure |
-| `QE` | Quality engineering, test automation, QA processes |
-| `CSOPS` | CS operations, internal CS tooling, churn prevention |
-| `REVOPS` | Revenue operations, sales process, CRM |
-| `CRM` | Sales & CRM features |
+| `LE` | Labor and equipment tracking |
 
-When in doubt, use `SERVICE` for customer-facing web bugs and `PLATFORM` for infrastructure issues.
+**Financial & Accounting**
+| Project Key | Use When |
+|---|---|
+| `FINOS` | Invoicing, payments, financial OS features, payment integrations |
+| `ACCT` | Accounting integrations (general) |
+
+**Reporting & Data**
+| Project Key | Use When |
+|---|---|
+| `REPORTING` | Reports, dashboards, data exports, analytics views |
+| `ANALYTICS` | Data analytics, insights, BI features |
+
+**Customer Commitments & Professional Services**
+| Project Key | Use When |
+|---|---|
+| `CC` | Promises or commitments made to customers that must be tracked |
+| `PSR` | Professional services or implementation services requests |
+| `IX` | Implementation and onboarding issues for new customers |
+| `CE` | Customer engineering — custom integrations, data migrations, bespoke work |
+
+**Platform, API & Infrastructure**
+| Project Key | Use When |
+|---|---|
+| `PLATFORM` | Core infrastructure, auth, performance, permissions, platform-level bugs |
+| `API` | Public or open API bugs, feature requests, or documentation |
+| `FS` | Foundational services shared across the platform |
+| `DV` | DevOps, CI/CD, infrastructure operations |
+| `DEVEX` | Developer experience, internal tooling, dev infrastructure |
+
+**Product & AI**
+| Project Key | Use When |
+|---|---|
+| `AI` | AI features and capabilities in the product |
+| `CRM` | Sales and CRM features |
+
+**Quality & Engineering**
+| Project Key | Use When |
+|---|---|
+| `QE` | Quality engineering, test automation, QA process improvements |
+
+**Business Operations**
+| Project Key | Use When |
+|---|---|
+| `CSOPS` | CS operations, internal CS tooling, churn prevention processes |
+| `REVOPS` | Revenue operations, sales process improvements |
+
+When in doubt: use `SERVICE` for customer-facing web app bugs, `PLATFORM` for infrastructure issues, `CC` for promises made to customers, and `IX` for anything blocking a customer onboarding.
 
 ---
 
