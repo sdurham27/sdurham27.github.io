@@ -59,9 +59,9 @@
   <nav class="tabs-nav" role="tablist" aria-label="Jira tools">
     <button class="tab-btn active" data-tab="discover" role="tab" aria-selected="true">
       <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
-        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
       </svg>
-      Discover Tickets
+      Create Ticket
     </button>
     <button class="tab-btn" data-tab="lookup" role="tab" aria-selected="false">
       <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
@@ -86,8 +86,18 @@
     <div class="tab-panel" id="panel-discover">
 
       <div class="panel-hero">
-        <h1 class="headline">Discover Tickets</h1>
-        <p class="subheadline">Searches your Gmail, Slack, Gong recordings, and notes for actionable items that should become Jira tickets — then lets you create them directly.</p>
+        <h1 class="headline">Create Jira Ticket</h1>
+        <p class="subheadline">Review the pre-filled details below and click <strong>Create in Jira</strong>. The Glean agent has already filled in what it found — edit anything before submitting.</p>
+      </div>
+
+      <!-- Shown when page is opened with URL params from the Glean agent -->
+      <div class="glean-source-banner" id="glean-source-banner" hidden>
+        <div class="glean-source-inner">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
+          </svg>
+          <span>Suggested by Glean Agent<span id="glean-source-detail"></span></span>
+        </div>
       </div>
 
       <!-- Shown when Jira credentials are not yet configured -->
@@ -225,29 +235,33 @@
           <!-- Dynamic custom fields injected by JS after querying Jira createmeta -->
           <div id="discover-custom-fields"></div>
 
-          <!-- Standard search parameters -->
+          <!-- Core ticket fields -->
+          <div class="field-group">
+            <label for="create-summary">Summary <span class="req">*</span></label>
+            <input type="text" id="create-summary" placeholder="Brief description of the issue or request" />
+          </div>
+
           <div class="field-row">
             <div class="field-group">
-              <label for="discover-days">Lookback Period</label>
+              <label for="create-type">Issue Type</label>
               <div class="select-wrapper">
-                <select id="discover-days">
-                  <option value="7">Last 7 days</option>
-                  <option value="14" selected>Last 14 days</option>
-                  <option value="30">Last 30 days</option>
+                <select id="create-type">
+                  <option value="Bug">Bug</option>
+                  <option value="Story">Story</option>
+                  <option value="Task" selected>Task</option>
+                  <option value="Improvement">Improvement</option>
                 </select>
                 <svg class="select-arrow" viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M7 10l5 5 5-5z"/></svg>
               </div>
             </div>
-
             <div class="field-group">
-              <label for="discover-source">Data Sources</label>
+              <label for="create-priority">Priority</label>
               <div class="select-wrapper">
-                <select id="discover-source">
-                  <option value="all">All sources</option>
-                  <option value="gmail">Gmail only</option>
-                  <option value="slack">Slack only</option>
-                  <option value="gong">Gong only</option>
-                  <option value="notes">Notes / Docs only</option>
+                <select id="create-priority">
+                  <option value="Critical">Critical</option>
+                  <option value="High">High</option>
+                  <option value="Medium" selected>Medium</option>
+                  <option value="Low">Low</option>
                 </select>
                 <svg class="select-arrow" viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M7 10l5 5 5-5z"/></svg>
               </div>
@@ -255,26 +269,26 @@
           </div>
 
           <div class="field-group">
-            <label for="discover-customer">Filter by Customer <span class="label-hint">(optional)</span></label>
-            <input type="text" id="discover-customer" placeholder="e.g. Acme Corp — leave blank to search all" />
+            <label for="create-customer">Customer <span class="label-hint">(optional)</span></label>
+            <input type="text" id="create-customer" placeholder="e.g. Acme Corp" />
           </div>
 
-          <button class="action-btn" id="discover-btn">
+          <div class="field-group">
+            <label for="create-description">Description</label>
+            <textarea id="create-description" rows="6" placeholder="Describe the issue or request in detail…"></textarea>
+          </div>
+
+          <button class="action-btn" id="create-btn">
             <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
-              <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+              <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
             </svg>
-            Discover Tickets
+            Create in Jira
           </button>
         </div><!-- /#discover-extra-fields -->
       </div>
 
-      <div class="thinking-area" id="discover-thinking" hidden>
-        <div class="thinking-dots"><span></span><span></span><span></span></div>
-        <p class="thinking-text">Searching Gmail, Slack, Gong, and notes…</p>
-      </div>
-
-      <div id="discover-results"></div>
-      <div class="error-area" id="discover-error" hidden></div>
+      <div class="create-success" id="create-success" hidden></div>
+      <div class="error-area" id="create-error" hidden></div>
     </div>
 
     <!-- ────────────────────────────────────────────────────────────────── -->

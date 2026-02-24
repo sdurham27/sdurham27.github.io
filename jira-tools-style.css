@@ -1564,6 +1564,33 @@ body {
   opacity: 0.5;
 }
 
+/* ── Textarea inside prompt-card (create ticket form) ────────────── */
+.prompt-card textarea {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 0.95rem;
+  font-family: inherit;
+  padding: 10px 14px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  width: 100%;
+  resize: vertical;
+  min-height: 120px;
+  line-height: 1.55;
+}
+
+.prompt-card textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.prompt-card textarea::placeholder {
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
 /* ── Dynamic field selects (option fields) ───────────────────────── */
 .prompt-card .cfield-select {
   width: 100%;
@@ -1588,6 +1615,63 @@ body {
 .prompt-card .cfield-select option {
   background: var(--surface);
   color: var(--text);
+}
+
+/* ============================================================
+   Create Ticket Tab — Glean Source Banner + Inline Success
+   ============================================================ */
+
+.glean-source-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(16, 185, 129, 0.06);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 12px;
+  padding: 12px 18px;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  animation: fade-in 0.2s ease;
+}
+
+.glean-source-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.glean-source-inner svg {
+  flex-shrink: 0;
+  color: var(--success);
+  opacity: 0.85;
+}
+
+.create-success {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--success-bg);
+  border: 1px solid var(--success-border);
+  border-radius: 10px;
+  padding: 14px 18px;
+  font-size: 0.9rem;
+  color: var(--success);
+  font-weight: 500;
+  animation: fade-in 0.2s ease;
+}
+
+.create-success svg {
+  flex-shrink: 0;
+}
+
+.create-success a {
+  color: var(--success);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.create-success a:hover {
+  text-decoration: underline;
 }
 
 /* ============================================================
