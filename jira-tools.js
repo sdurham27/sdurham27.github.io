@@ -789,6 +789,33 @@ function updateConnectNotice() {
 // ── Generate Agent Prompt ────────────────────────────────────────────────────
 // Queries Jira createmeta for each major project, extracts custom fields and
 // their exact allowed values, then produces a ready-to-paste Glean system prompt.
+// If a Glean token is present, also searches Confluence for ticket routing docs
+// and includes relevant excerpts in the generated prompt.
+
+// Search Glean's Confluence connector for ticket type / project routing docs.
+async function searchConfluenceForTicketDocs(settings) {
+  if (!settings.gleanToken) return null;
+  const backend = settings.gleanBackend || DEFAULT_BACKEND;
+  try {
+    const res = await fetch(`https://${backend}/rest/api/v1/search`, {
+      method:  'POST',
+      headers: {
+        'Authorization': `Bearer ${settings.gleanToken}`,
+        'Content-Type':  'application/json',
+        'Accept':        'application/json',
+        ...(settings.jiraEmail ? { 'X-Glean-ActAs': settings.jiraEmail } : {}),
+      },
+      body: JSON.stringify({
+        query:             'jira project guide ticket types when to use which project',
+        pageSize:          10,
+        datasourceFilters: [{ datasource: 'confluence' }],
+      }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return (data.results || []).length ? data.results : null;
+  } catch (_) { return null; }
+}
 
 async function generateAgentPrompt() {
   const settings = getSettings();
@@ -802,7 +829,8 @@ async function generateAgentPrompt() {
   }
 
   btn.disabled    = true;
-  btn.textContent = 'Fetching Jira data…';
+  const hasGlean  = !!(settings.gleanToken);
+  btn.textContent = hasGlean ? 'Fetching Jira + Confluence data…' : 'Fetching Jira data…';
   status.textContent = '';
   status.className   = 'settings-status';
 
@@ -811,19 +839,23 @@ async function generateAgentPrompt() {
     'CE', 'ANALYTICS', 'IP', 'QE', 'AI', 'CSOPS', 'REVOPS', 'CRM', 'API',
   ];
 
+  // Run Jira createmeta fetches and Confluence search in parallel
   const projectMeta = {};
-  await Promise.all(KEY_PROJECTS.map(async key => {
-    try {
-      const res = await fetch(
-        `${PROXY_URL}/rest/api/3/issue/createmeta?projectKeys=${key}&expand=projects.issuetypes.fields`,
-        { headers: jiraHeaders(settings) }
-      );
-      if (!res.ok) return;
-      const data = await res.json();
-      const proj = (data.projects || []).find(p => p.key === key);
-      if (proj) projectMeta[key] = proj;
-    } catch (_) {}
-  }));
+  const [, confluenceResults] = await Promise.all([
+    Promise.all(KEY_PROJECTS.map(async key => {
+      try {
+        const res = await fetch(
+          `${PROXY_URL}/rest/api/3/issue/createmeta?projectKeys=${key}&expand=projects.issuetypes.fields`,
+          { headers: jiraHeaders(settings) }
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        const proj = (data.projects || []).find(p => p.key === key);
+        if (proj) projectMeta[key] = proj;
+      } catch (_) {}
+    })),
+    searchConfluenceForTicketDocs(settings),
+  ]);
 
   if (!Object.keys(projectMeta).length) {
     status.textContent = 'Could not fetch project data. Check credentials.';
@@ -833,13 +865,18 @@ async function generateAgentPrompt() {
     return;
   }
 
-  document.getElementById('prompt-output').value = buildAgentPromptText(projectMeta);
+  if (confluenceResults) {
+    status.textContent = `Included ${confluenceResults.length} Confluence result${confluenceResults.length !== 1 ? 's' : ''} in routing guide.`;
+    status.className   = 'settings-status success';
+  }
+
+  document.getElementById('prompt-output').value = buildAgentPromptText(projectMeta, confluenceResults);
   document.getElementById('prompt-modal').classList.remove('hidden');
   btn.disabled    = false;
   btn.textContent = 'Regenerate';
 }
 
-function buildAgentPromptText(projectMeta) {
+function buildAgentPromptText(projectMeta, confluenceResults) {
   const SKIP_NAMES   = /sprint|epic link|epic name|story point|rank|flagged|team|business value|parent link|development|release notes?|sla|start date|actual (start|end)|customer request|feature link|fix version/i;
   const SKIP_CUSTOMS = /gh-sprint|gh-epic|gh-ranking|com\.pyxis/i;
   const SKIP_IDS     = new Set(['customfield_10297']); // customer name handled via ?customer= param
@@ -891,6 +928,25 @@ function buildAgentPromptText(projectMeta) {
   const fieldRef  = projectSections.join('\n\n');
   const base      = 'https://sdurham27.github.io/jira-tools.html';
   const generated = new Date().toLocaleDateString();
+
+  // Build Confluence reference section from Glean search results (if available)
+  let confluenceSection = '';
+  if (confluenceResults && confluenceResults.length) {
+    const excerpts = confluenceResults.slice(0, 8).map(r => {
+      const title   = r.document?.title || r.title || 'Untitled';
+      const url     = r.document?.url || r.url || '';
+      const snippet = (r.snippets || []).map(s => s.text || '').filter(Boolean).join(' ')
+                   || r.snippet || r.excerpt || '';
+      let entry = `**${title}**`;
+      if (url) entry += `\n*${url}*`;
+      if (snippet) {
+        const clean = snippet.replace(/\s+/g, ' ').trim().slice(0, 500);
+        entry += `\n> ${clean}`;
+      }
+      return entry;
+    }).join('\n\n');
+    confluenceSection = `\n\n---\n\n### Confluence Reference\n*Retrieved from your Confluence via Glean — use these excerpts to inform project routing decisions:*\n\n${excerpts}`;
+  }
 
   return `# Glean Agent: Jira Ticket Creator
 ## System Prompt
@@ -982,7 +1038,7 @@ Projects are organized by functional area. Use the key that matches where the wo
 | \`CSOPS\` | CS operations, internal CS tools |
 | \`REVOPS\` | Revenue operations |
 
-When in doubt: \`SERVICE\` for customer-facing web bugs, \`PLATFORM\` for infrastructure, \`CC\` for customer commitments, \`IX\` for onboarding blockers.
+When in doubt: \`SERVICE\` for customer-facing web bugs, \`PLATFORM\` for infrastructure, \`CC\` for customer commitments, \`IX\` for onboarding blockers.${confluenceSection}
 
 ---
 
