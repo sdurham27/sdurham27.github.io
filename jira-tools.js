@@ -1017,11 +1017,11 @@ function openCreateModal(idx) {
     Create Ticket`;
 
   currentModalIdx = idx;
-  document.getElementById('create-modal').hidden = false;
+  document.getElementById('create-modal').classList.remove('hidden');
 }
 
 function closeModal() {
-  document.getElementById('create-modal').hidden = true;
+  document.getElementById('create-modal').classList.add('hidden');
   currentModalIdx = null;
 }
 
