@@ -1325,7 +1325,7 @@ async function loadUpdates() {
       `(assignee = currentUser() OR reporter = currentUser()) AND updated >= -${days}d ORDER BY updated DESC`
     );
     const fields = 'summary,status,priority,assignee,reporter,issuetype,updated,comment,customfield_10297';
-    const url    = `${PROXY_URL}/rest/api/3/search?jql=${jql}&maxResults=25&fields=${fields}&expand=changelog`;
+    const url    = `${PROXY_URL}/rest/api/3/search/jql?jql=${jql}&maxResults=25&fields=${fields}&expand=changelog`;
 
     const res  = await fetch(url, { headers: jiraHeaders(settings) });
     if (!res.ok) {
