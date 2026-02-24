@@ -61,6 +61,290 @@ function timeAgo(isoString) {
   return new Date(isoString).toLocaleDateString();
 }
 
+// ── Searchable select helper ────────────────────────────────────────────────
+// Sets a custom-select's value AND refreshes its trigger label.
+function setSelectValue(id, value) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.value = value;
+  if (typeof el._csUpdate === 'function') el._csUpdate();
+}
+
+// ── Custom Searchable Select ────────────────────────────────────────────────
+// Converts every .select-wrapper on the page into a searchable dropdown.
+// The native <select> stays in the DOM (hidden) so existing JS that reads
+// .value still works without modification. Call once after DOMContentLoaded.
+function initCustomSelects() {
+  // Close all open panels (used by document click + scroll handlers)
+  function closeAll() {
+    document.querySelectorAll('.cs-panel').forEach(p => {
+      if (!p.hidden) {
+        p.hidden = true;
+        const trigger = p._trigger;
+        if (trigger) {
+          trigger.classList.remove('open');
+          trigger.setAttribute('aria-expanded', 'false');
+        }
+      }
+    });
+  }
+
+  document.addEventListener('scroll', closeAll, true);
+  window.addEventListener('resize', closeAll);
+
+  document.querySelectorAll('.select-wrapper').forEach(wrapper => {
+    const nativeSel = wrapper.querySelector('select');
+    if (!nativeSel) return;
+
+    // Hide native select and its sibling arrow
+    nativeSel.style.display = 'none';
+    const oldArrow = wrapper.querySelector('.select-arrow');
+    if (oldArrow) oldArrow.style.display = 'none';
+
+    // ── Build trigger button ──────────────────────────────────────
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'cs-trigger';
+    trigger.setAttribute('aria-haspopup', 'listbox');
+    trigger.setAttribute('aria-expanded', 'false');
+
+    const valueSpan = document.createElement('span');
+    valueSpan.className = 'cs-value is-placeholder';
+
+    const arrowNS = 'http://www.w3.org/2000/svg';
+    const arrowSvg = document.createElementNS(arrowNS, 'svg');
+    arrowSvg.setAttribute('viewBox', '0 0 24 24');
+    arrowSvg.setAttribute('width', '16');
+    arrowSvg.setAttribute('height', '16');
+    arrowSvg.setAttribute('fill', 'currentColor');
+    arrowSvg.classList.add('cs-trigger-arrow');
+    const arrowPath = document.createElementNS(arrowNS, 'path');
+    arrowPath.setAttribute('d', 'M7 10l5 5 5-5z');
+    arrowSvg.appendChild(arrowPath);
+
+    trigger.appendChild(valueSpan);
+    trigger.appendChild(arrowSvg);
+
+    // ── Build panel ───────────────────────────────────────────────
+    const panel = document.createElement('div');
+    panel.className = 'cs-panel';
+    panel.hidden = true;
+    panel.setAttribute('role', 'listbox');
+    panel._trigger = trigger; // back-reference for closeAll()
+
+    const searchWrap = document.createElement('div');
+    searchWrap.className = 'cs-search-wrap';
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.className = 'cs-search';
+    searchInput.placeholder = 'Search…';
+    searchInput.setAttribute('autocomplete', 'off');
+    searchWrap.appendChild(searchInput);
+    panel.appendChild(searchWrap);
+
+    const list = document.createElement('div');
+    list.className = 'cs-list';
+
+    // ── Populate options from native select ───────────────────────
+    const optionData = []; // { value, label, el, groupEl }
+
+    const placeholderOpt = nativeSel.querySelector('option[value=""]');
+    const placeholderText = placeholderOpt ? placeholderOpt.textContent.trim() : '— Select —';
+
+    for (const child of nativeSel.children) {
+      if (child.tagName === 'OPTGROUP') {
+        const groupDiv = document.createElement('div');
+        groupDiv.className = 'cs-group-label';
+        groupDiv.textContent = child.label;
+        list.appendChild(groupDiv);
+
+        for (const opt of child.children) {
+          const optEl = makeOptionEl(opt.textContent.trim());
+          optionData.push({ value: opt.value, label: opt.textContent.trim(), el: optEl, groupEl: groupDiv });
+          list.appendChild(optEl);
+        }
+      } else if (child.tagName === 'OPTION' && child.value) {
+        const optEl = makeOptionEl(child.textContent.trim());
+        optionData.push({ value: child.value, label: child.textContent.trim(), el: optEl, groupEl: null });
+        list.appendChild(optEl);
+      }
+    }
+
+    const noResults = document.createElement('div');
+    noResults.className = 'cs-no-results';
+    noResults.textContent = 'No matches found';
+    noResults.hidden = true;
+    list.appendChild(noResults);
+
+    panel.appendChild(list);
+    wrapper.appendChild(trigger);
+    wrapper.appendChild(panel);
+
+    // ── Display sync ──────────────────────────────────────────────
+    function updateDisplay() {
+      const val = nativeSel.value;
+      const found = optionData.find(o => o.value === val);
+      if (val && found) {
+        valueSpan.textContent = found.label;
+        valueSpan.classList.remove('is-placeholder');
+      } else {
+        valueSpan.textContent = placeholderText;
+        valueSpan.classList.add('is-placeholder');
+      }
+      optionData.forEach(o => o.el.classList.toggle('is-selected', o.value === val));
+    }
+
+    // Expose so setSelectValue() can call it
+    nativeSel._csUpdate = updateDisplay;
+    updateDisplay();
+
+    // ── Panel positioning (fixed, escapes all overflow ancestors) ─
+    function positionPanel() {
+      const rect = trigger.getBoundingClientRect();
+      const panelH = 270; // search + list max height estimate
+      const spaceBelow = window.innerHeight - rect.bottom - 6;
+      const spaceAbove = rect.top - 6;
+
+      panel.style.width = rect.width + 'px';
+      panel.style.left  = rect.left + 'px';
+      panel.style.right = 'auto';
+
+      if (spaceBelow >= panelH || spaceBelow >= spaceAbove) {
+        panel.style.top    = (rect.bottom + 4) + 'px';
+        panel.style.bottom = 'auto';
+      } else {
+        panel.style.bottom = (window.innerHeight - rect.top + 4) + 'px';
+        panel.style.top    = 'auto';
+      }
+    }
+
+    // ── Open / close ──────────────────────────────────────────────
+    function openPanel() {
+      closeAll();
+      panel.hidden = false;
+      trigger.classList.add('open');
+      trigger.setAttribute('aria-expanded', 'true');
+      positionPanel();
+      searchInput.value = '';
+      filterOptions('');
+      // Scroll selected item into view
+      const sel = optionData.find(o => o.value === nativeSel.value);
+      if (sel) sel.el.scrollIntoView({ block: 'nearest' });
+      searchInput.focus();
+    }
+
+    function closePanel() {
+      panel.hidden = true;
+      trigger.classList.remove('open');
+      trigger.setAttribute('aria-expanded', 'false');
+      focusedIdx = -1;
+      optionData.forEach(o => o.el.classList.remove('is-focused'));
+    }
+
+    trigger.addEventListener('click', e => {
+      e.stopPropagation();
+      panel.hidden ? openPanel() : closePanel();
+    });
+
+    panel.addEventListener('click', e => e.stopPropagation());
+
+    document.addEventListener('click', e => {
+      if (!wrapper.contains(e.target) && !panel.contains(e.target)) closePanel();
+    });
+
+    // ── Select option ─────────────────────────────────────────────
+    function selectValue(value) {
+      nativeSel.value = value;
+      nativeSel.dispatchEvent(new Event('change', { bubbles: true }));
+      updateDisplay();
+      closePanel();
+      trigger.focus();
+    }
+
+    optionData.forEach(o => {
+      o.el.addEventListener('click', () => selectValue(o.value));
+    });
+
+    // ── Search filtering ──────────────────────────────────────────
+    function filterOptions(query) {
+      const q = query.toLowerCase().trim();
+      const groupsWithVisible = new Set();
+      let anyVisible = false;
+
+      optionData.forEach(o => {
+        const match = !q ||
+          o.label.toLowerCase().includes(q) ||
+          o.value.toLowerCase().includes(q);
+        o.el.hidden = !match;
+        if (match) {
+          anyVisible = true;
+          if (o.groupEl) groupsWithVisible.add(o.groupEl);
+        }
+      });
+
+      list.querySelectorAll('.cs-group-label').forEach(g => {
+        g.hidden = !groupsWithVisible.has(g);
+      });
+
+      noResults.hidden = anyVisible;
+      focusedIdx = -1;
+      optionData.forEach(o => o.el.classList.remove('is-focused'));
+    }
+
+    searchInput.addEventListener('input', e => filterOptions(e.target.value));
+
+    // ── Keyboard navigation ───────────────────────────────────────
+    let focusedIdx = -1;
+
+    function visibleOptions() {
+      return optionData.filter(o => !o.el.hidden);
+    }
+
+    function moveFocus(dir) {
+      const visible = visibleOptions();
+      if (!visible.length) return;
+      optionData.forEach(o => o.el.classList.remove('is-focused'));
+      focusedIdx = Math.max(0, Math.min(visible.length - 1, focusedIdx + dir));
+      visible[focusedIdx].el.classList.add('is-focused');
+      visible[focusedIdx].el.scrollIntoView({ block: 'nearest' });
+    }
+
+    searchInput.addEventListener('keydown', e => {
+      if (e.key === 'ArrowDown')  { e.preventDefault(); moveFocus(1); }
+      else if (e.key === 'ArrowUp')   { e.preventDefault(); moveFocus(-1); }
+      else if (e.key === 'Enter') {
+        e.preventDefault();
+        const visible = visibleOptions();
+        if (focusedIdx >= 0 && visible[focusedIdx]) selectValue(visible[focusedIdx].value);
+        else if (visible.length === 1)               selectValue(visible[0].value);
+      }
+      else if (e.key === 'Escape') { closePanel(); trigger.focus(); }
+      else if (e.key === 'Tab')    { closePanel(); }
+    });
+
+    trigger.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        panel.hidden ? openPanel() : closePanel();
+      } else if (e.key === 'Escape') {
+        closePanel();
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (panel.hidden) openPanel();
+        moveFocus(1);
+      }
+    });
+  });
+}
+
+function makeOptionEl(label) {
+  const div = document.createElement('div');
+  div.className = 'cs-option';
+  div.setAttribute('role', 'option');
+  div.textContent = label;
+  return div;
+}
+
 function escapeHtml(str) {
   return (str || '')
     .replace(/&/g, '&amp;')
@@ -248,6 +532,9 @@ document.getElementById('save-settings').addEventListener('click', async () => {
 
 // Restore settings on load
 window.addEventListener('DOMContentLoaded', () => {
+  // Initialize all searchable dropdowns before restoring any values
+  initCustomSelects();
+
   const saved = getSettings();
   if (saved.jiraEmail)    document.getElementById('jira-email').value    = saved.jiraEmail;
   if (saved.jiraToken)    document.getElementById('jira-token').value    = saved.jiraToken;
@@ -488,7 +775,6 @@ function openCreateModal(idx) {
   const project = document.getElementById('discover-project').value.trim();
 
   document.getElementById('m-summary').value  = t.TITLE || '';
-  document.getElementById('m-project').value  = project || '';
   document.getElementById('m-customer').value = (t.CUSTOMER && t.CUSTOMER.toLowerCase() !== 'internal') ? t.CUSTOMER : '';
   document.getElementById('m-description').value = [
     t.DESCRIPTION || '',
@@ -496,17 +782,17 @@ function openCreateModal(idx) {
     t.SOURCE      ? `\n\nSource: ${t.SOURCE}${t.SOURCE_DATE ? ` (${t.SOURCE_DATE})` : ''}` : '',
   ].join('').trim();
 
-  // Set type
+  // Set selects via helper so custom dropdown labels refresh
+  setSelectValue('m-project', project || '');
+
   const typeMap = {
     'bug': 'Bug', 'story': 'Story', 'task': 'Task',
     'feature request': 'Story', 'improvement': 'Improvement', 'support': 'Task',
   };
-  const mappedType = typeMap[(t.TYPE || 'task').toLowerCase()] || 'Task';
-  document.getElementById('m-type').value = mappedType;
+  setSelectValue('m-type', typeMap[(t.TYPE || 'task').toLowerCase()] || 'Task');
 
-  // Set priority
   const prioMap = { 'critical': 'Critical', 'high': 'High', 'medium': 'Medium', 'low': 'Low' };
-  document.getElementById('m-priority').value = prioMap[(t.PRIORITY || 'medium').toLowerCase()] || 'Medium';
+  setSelectValue('m-priority', prioMap[(t.PRIORITY || 'medium').toLowerCase()] || 'Medium');
 
   hideEl('modal-status');
   document.getElementById('modal-status').className = 'modal-status';
