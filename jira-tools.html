@@ -52,6 +52,13 @@
         <button id="save-settings">Save &amp; Verify</button>
         <span id="settings-status" class="settings-status"></span>
       </div>
+
+      <div class="settings-section-title" style="margin-top:8px">Agent Configuration</div>
+      <p style="font-size:0.8rem;color:var(--text-muted);line-height:1.5">Queries your Jira to generate a ready-to-paste system prompt for the Glean Ticket Creator agent — includes each project's exact issue types and custom field options.</p>
+      <div class="settings-actions" style="margin-top:0">
+        <button id="gen-prompt-btn" class="btn-ghost">Generate Agent Prompt</button>
+        <span id="gen-prompt-status" class="settings-status"></span>
+      </div>
     </div>
   </div>
 
@@ -524,6 +531,29 @@
       </button>
     </div>
     <div class="modal-status" id="modal-status" hidden></div>
+  </div>
+</div>
+
+<!-- ── Generate Agent Prompt Modal ──────────────────────────────────────────── -->
+<div class="modal-overlay hidden" id="prompt-modal">
+  <div class="modal" style="max-width:760px">
+    <div class="modal-header">
+      <h2 class="modal-title">Glean Agent System Prompt</h2>
+      <button class="modal-close" id="prompt-modal-close" aria-label="Close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:0.85rem;color:var(--text-muted);line-height:1.5">Copy this and paste it into your <strong>Glean Jira Ticket Creator</strong> agent's system prompt field. Regenerate any time your Jira project fields change.</p>
+      <textarea id="prompt-output" class="prompt-output-area" readonly></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" id="prompt-modal-close-btn">Close</button>
+      <button class="action-btn" id="copy-prompt-btn">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+          <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+        </svg>
+        Copy to Clipboard
+      </button>
+    </div>
   </div>
 </div>
 
