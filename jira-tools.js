@@ -840,6 +840,7 @@ async function generateAgentPrompt() {
   status.className   = 'settings-status';
 
   const KEY_PROJECTS = [
+    'SIP', 'DT', 'DV', 'BUOP',
     'SERVICE', 'MOBILE', 'PLATFORM', 'FINOS', 'REPORTING', 'IX',
     'CE', 'ANALYTICS', 'IP', 'QE', 'AI', 'CSOPS', 'REVOPS', 'CRM', 'API',
   ];
@@ -969,81 +970,60 @@ You are a Jira ticket discovery assistant for **BuildOps**, a SaaS platform for 
 
 ---
 
-### URL Format
+### Ticket Types
 
-\`${base}?project={KEY}&summary={text}&taskType={type}&priority={level}&description={text}&customer={name}&source={src}&sourceDate={YYYY-MM-DD}\`
+Only create tickets of the following types. Each maps to a specific project + issuetype.
 
-**IMPORTANT field constraints:**
-- \`project\` — Jira project key. Use the routing guide below.
-- \`summary\` — Concise title, max 80 chars, URL-encoded.
-- \`taskType\` — MUST be EXACTLY one of: \`Bug\` | \`Story\` | \`Task\` | \`Improvement\`
-  Do NOT put custom descriptions here (e.g. "Create a new report" is WRONG here).
-- \`priority\` — MUST be EXACTLY one of: \`Critical\` | \`High\` | \`Medium\` | \`Low\`
-- \`description\` — 2–4 sentence description, URL-encoded.
-- \`customer\` — Account/customer name. Omit if internal.
-- \`source\` — \`Gmail\` | \`Slack\` | \`Gong\` | \`Notes\`
-- \`sourceDate\` — \`YYYY-MM-DD\`
+| Ticket Type | Project | issuetype | When to use |
+|---|---|---|---|
+| Product Question | \`SIP\` | \`Product Question\` | Product behavior is unclear or ambiguous AFTER checking docs, OpsGPT/Glean, and validating internally with team |
+| Feature Escalation Request | \`SIP\` | \`Feature Escalation Request\` | Customer feature need with strategic importance, revenue/churn risk, or go-live dependency |
+| Bug (customer-reported) | \`BUOP\` | \`Bug\` | Broken functionality reported externally via support/Intercom |
+| Bug (internal) | \`{squad}\` | \`Bug\` | Internally found bug — use Squad Ownership Registry to pick the right project key |
+| Data Task | \`DT\` | \`Data Task\` | Data manipulation needed in BuildOps database (import, update, delete, ETL, discovery) |
+| DevOps Request | \`DV\` | \`Task\` | DevOps, CI/CD, infrastructure, or tooling requests |
 
-For project-specific custom fields, append them using the **exact parameter names and values** from the Project Field Reference below.
+**Do NOT create tickets for:**
+- General how-to / training questions → use Confluence or OpsGPT/Glean
+- Non-strategic enhancement requests → email support with subject "Feature Request"
+- Flatfile bugs → create a SIP Product Question under "Data Update Module"
+- PS data or migration requests → discuss with Implementation team first
+- Import errors / tooling bugs → use #cx_Data_Tasks Slack channel
 
 ---
 
-### Project Routing
+### URL Format (by ticket type)
 
-Projects are organized by functional area. Use the key that matches where the work belongs:
+**Product Question (SIP)**
+\`${base}?project=SIP&taskType=Product+Question&summary={text}&priority={level}&description={text}&customer={name}&source={src}&sourceDate={YYYY-MM-DD}\`
 
-**Field Service & Mobile**
-| Project | Use when |
-|---|---|
-| \`SERVICE\` | Field service jobs, work orders, scheduling, dispatch, web app bugs |
-| \`MOBILE\` | iOS or Android app bugs or requests |
-| \`IP\` | Inventory, parts, purchasing |
-| \`ASSETS\` | Asset tracking and management |
-| \`LE\` | Labor and equipment |
+**Feature Escalation Request (SIP)**
+\`${base}?project=SIP&taskType=Feature+Escalation+Request&summary={text}&priority={level}&description={text}&customer={name}&source={src}&sourceDate={YYYY-MM-DD}\`
 
-**Financial & Accounting**
-| Project | Use when |
-|---|---|
-| \`FINOS\` | Invoicing, payments, financial OS features |
-| \`ACCT\` | Accounting integrations |
+**Bug — customer-reported (BUOP)**
+\`${base}?project=BUOP&taskType=Bug&summary={text}&priority={level}&description={text}&customer={name}&tenantId={id}&source={src}&sourceDate={YYYY-MM-DD}\`
 
-**Reporting & Data**
-| Project | Use when |
-|---|---|
-| \`REPORTING\` | Reports, dashboards, data exports |
-| \`ANALYTICS\` | Data analytics, insights, BI |
+**Bug — internal (use squad project key)**
+\`${base}?project={SQUAD}&taskType=Bug&summary={text}&priority={level}&description={text}&source={src}&sourceDate={YYYY-MM-DD}\`
 
-**Customer Commitments & Services**
-| Project | Use when |
-|---|---|
-| \`CC\` | Promises or commitments made to customers |
-| \`PSR\` | Professional services requests |
-| \`IX\` | Implementation and customer onboarding |
-| \`CE\` | Customer engineering, custom integrations |
+**Data Task (DT)**
+\`${base}?project=DT&taskType=Data+Task&summary={text}&priority={level}&description={text}&customer={name}&segment={tier}&tenantId={id}&source={src}&sourceDate={YYYY-MM-DD}\`
 
-**Platform, API & Infrastructure**
-| Project | Use when |
-|---|---|
-| \`PLATFORM\` | Core infrastructure, auth, performance, platform bugs |
-| \`API\` | Public/open API issues or feature requests |
-| \`FS\` | Foundational services |
-| \`DV\` | DevOps, CI/CD, infrastructure |
-| \`DEVEX\` | Developer experience, internal tooling |
+**DevOps Request (DV)**
+\`${base}?project=DV&taskType=Task&summary={text}&priority={level}&description={text}&source={src}&sourceDate={YYYY-MM-DD}\`
 
-**Product & AI**
-| Project | Use when |
-|---|---|
-| \`AI\` | AI features and capabilities |
-| \`CRM\` | Sales & CRM features |
+**Common field constraints:**
+- \`summary\` — Concise title, max 80 chars, URL-encoded.
+- \`taskType\` — MUST exactly match the issuetype column above for the chosen ticket type.
+- \`priority\` — MUST be EXACTLY one of: \`Critical\` | \`High\` | \`Medium\` | \`Low\`
+- \`description\` — 2–4 sentence description, URL-encoded.
+- \`customer\` — Account/customer name. Omit if internal.
+- \`tenantId\` — Jira tenant/account ID. Include when available for bugs and data tasks.
+- \`segment\` — \`Corporate\` | \`Mid-Market\` | \`Enterprise\` | \`Strategic\`
+- \`source\` — \`Gmail\` | \`Slack\` | \`Gong\` | \`Notes\`
+- \`sourceDate\` — \`YYYY-MM-DD\`
 
-**Quality & Operations**
-| Project | Use when |
-|---|---|
-| \`QE\` | Quality engineering, test automation |
-| \`CSOPS\` | CS operations, internal CS tools |
-| \`REVOPS\` | Revenue operations |
-
-When in doubt: \`SERVICE\` for customer-facing web bugs, \`PLATFORM\` for infrastructure, \`CC\` for customer commitments, \`IX\` for onboarding blockers.${confluenceSection}
+For project-specific custom fields, append them using the **exact parameter names and values** from the Project Field Reference below.${confluenceSection}
 
 ---
 
@@ -1081,21 +1061,40 @@ Present each item as:
 
 ---
 
-**Example:**
+**Examples:**
 
 **1. 🐛 Bug — High | Acme Corp**
 **Mobile app crashes when saving work orders with photos**
 
 Acme Corp's ops manager reported on a Gong call that the mobile app crashes when saving work orders with photo attachments. Reproduced on both iOS and Android. Blocking their field crew from completing work orders.
 
-[➕ Create this ticket](${base}?project=MOBILE&summary=Mobile+app+crashes+saving+work+orders+with+photos&taskType=Bug&priority=High&customer=Acme+Corp&source=Gong&sourceDate=2024-02-18&description=Mobile+app+crashes+when+saving+work+orders+with+photo+attachments.+Reproduced+on+iOS+and+Android.)
+[➕ Create this ticket](${base}?project=BUOP&summary=Mobile+app+crashes+saving+work+orders+with+photos&taskType=Bug&priority=High&customer=Acme+Corp&source=Gong&sourceDate=2024-02-18&description=Mobile+app+crashes+when+saving+work+orders+with+photo+attachments.+Reproduced+on+iOS+and+Android.)
+
+---
+
+**2. ❓ Product Question — Medium | Beta Corp**
+**Clarify expected behavior when pricebook item is archived mid-job**
+
+Beta Corp's implementation manager asked what should happen when a pricebook item is archived while referenced on an open job. Docs and Glean were checked with no clear answer; internal team could not confirm intended behavior.
+
+[➕ Create this ticket](${base}?project=SIP&summary=Clarify+expected+behavior+when+pricebook+item+archived+mid-job&taskType=Product+Question&priority=Medium&customer=Beta+Corp&source=Slack&sourceDate=2024-02-18&description=Customer+asked+what+happens+when+a+pricebook+item+is+archived+while+referenced+on+an+open+job.+Docs+and+Glean+checked.+Internal+team+could+not+confirm.)
+
+---
+
+**3. 📊 Data Task — High | Gamma Corp**
+**Bulk-assign Account Managers to all Customers (800 records)**
+
+Gamma Corp wants to start using the Account Manager field and has provided a spreadsheet of 800 customer-to-AM mappings. Bulk update is not possible through the UI.
+
+[➕ Create this ticket](${base}?project=DT&summary=Bulk+assign+Account+Managers+to+all+Customers&taskType=Data+Task&priority=High&customer=Gamma+Corp&segment=Enterprise&tenantId=12345&source=Gong&sourceDate=2024-02-18&description=Customer+wants+Account+Manager+field+populated+for+800+customers.+Bulk+update+not+available+in+UI.+Mapping+spreadsheet+provided.)
 
 ---
 
 ### Behavior Rules
 
+- **Use only the six ticket types above.** Do not create Story, Improvement, or ad-hoc Task tickets.
 - **Exact values only.** For any option/dropdown field, use ONLY the values from the Project Field Reference above.
-- **taskType is a Jira issue type**, not a description. Use Bug / Story / Task / Improvement only.
+- **taskType must exactly match** the issuetype for the chosen ticket type — copy it verbatim from the Ticket Types table.
 - **Don't hallucinate.** Only suggest tickets based on content you actually found.
 - **No duplicates.** Skip items that appear already tracked in Jira.
 - **One ticket per issue.** Merge duplicate reports from multiple sources into one.
@@ -1233,10 +1232,19 @@ function readUrlParams() {
 // Map a free-text issue type string to a Jira issue type name
 function normalizeIssueType(str) {
   const s = (str || '').toLowerCase().trim();
-  if (s.includes('bug'))                                             return 'Bug';
-  if (s.includes('story') || s.includes('feature') || s.includes('request')) return 'Story';
-  if (s.includes('improv'))                                         return 'Improvement';
-  if (s.includes('task') || s.includes('support') || s)            return 'Task';
+  // SIP-specific types — must match before generic checks
+  if (s === 'product question' || s.includes('product question'))             return 'Product Question';
+  if (s === 'feature escalation request' || s.includes('feature escalation')) return 'Feature Escalation Request';
+  // DT types
+  if (s === 'data task' || s.includes('data task'))                           return 'Data Task';
+  if (s === 'import')                                                          return 'Import';
+  if (s === 'update data' || s.includes('update data'))                       return 'Update Data';
+  if (s === 'delete data' || s.includes('delete data'))                       return 'Delete Data';
+  if (s === 'full etl' || s.includes('etl'))                                  return 'Full ETL';
+  if (s === 'discovery')                                                       return 'Discovery';
+  // Standard types
+  if (s.includes('bug'))                                                       return 'Bug';
+  if (s.includes('task'))                                                      return 'Task';
   return '';
 }
 

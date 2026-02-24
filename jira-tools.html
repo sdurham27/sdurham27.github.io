@@ -126,6 +126,12 @@
           <div class="select-wrapper">
             <select id="discover-project">
               <option value="">— Select a project area —</option>
+              <optgroup label="Process Tickets">
+                <option value="SIP">SIP — Single Intake Process (Product Questions &amp; Feature Escalations)</option>
+                <option value="DT">DT — Data Tasks (imports, updates, deletes)</option>
+                <option value="DV">DV — DevOps &amp; Infrastructure Requests</option>
+                <option value="BUOP">BUOP — BuildOps (external/support bug reports)</option>
+              </optgroup>
               <optgroup label="Most Used">
                 <option value="SERVICE">Field Service Jobs &amp; Work Orders (SERVICE)</option>
                 <option value="MOBILE">Mobile App — iOS &amp; Android (MOBILE)</option>
@@ -235,10 +241,22 @@
               <label for="create-type">Issue Type</label>
               <div class="select-wrapper">
                 <select id="create-type">
-                  <option value="Bug">Bug</option>
-                  <option value="Story">Story</option>
-                  <option value="Task" selected>Task</option>
-                  <option value="Improvement">Improvement</option>
+                  <optgroup label="SIP">
+                    <option value="Product Question">Product Question</option>
+                    <option value="Feature Escalation Request">Feature Escalation Request</option>
+                  </optgroup>
+                  <optgroup label="Standard">
+                    <option value="Bug">Bug</option>
+                    <option value="Task" selected>Task</option>
+                  </optgroup>
+                  <optgroup label="Data Task (DT)">
+                    <option value="Data Task">Data Task</option>
+                    <option value="Import">Import</option>
+                    <option value="Update Data">Update Data</option>
+                    <option value="Delete Data">Delete Data</option>
+                    <option value="Full ETL">Full ETL</option>
+                    <option value="Discovery">Discovery</option>
+                  </optgroup>
                 </select>
                 <svg class="select-arrow" viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M7 10l5 5 5-5z"/></svg>
               </div>
@@ -368,6 +386,12 @@
           <div class="select-wrapper">
             <select id="m-project">
               <option value="">— Select —</option>
+              <optgroup label="Process Tickets">
+                <option value="SIP">SIP — Single Intake Process</option>
+                <option value="DT">DT — Data Tasks</option>
+                <option value="DV">DV — DevOps &amp; Infrastructure</option>
+                <option value="BUOP">BUOP — BuildOps (external bug reports)</option>
+              </optgroup>
               <optgroup label="Most Used">
                 <option value="SERVICE">Field Service Jobs &amp; Work Orders (SERVICE)</option>
                 <option value="MOBILE">Mobile App — iOS &amp; Android (MOBILE)</option>
@@ -455,10 +479,22 @@
           <label for="m-type">Issue Type</label>
           <div class="select-wrapper">
             <select id="m-type">
-              <option value="Bug">Bug</option>
-              <option value="Story">Story</option>
-              <option value="Task" selected>Task</option>
-              <option value="Improvement">Improvement</option>
+              <optgroup label="SIP">
+                <option value="Product Question">Product Question</option>
+                <option value="Feature Escalation Request">Feature Escalation Request</option>
+              </optgroup>
+              <optgroup label="Standard">
+                <option value="Bug">Bug</option>
+                <option value="Task" selected>Task</option>
+              </optgroup>
+              <optgroup label="Data Task (DT)">
+                <option value="Data Task">Data Task</option>
+                <option value="Import">Import</option>
+                <option value="Update Data">Update Data</option>
+                <option value="Delete Data">Delete Data</option>
+                <option value="Full ETL">Full ETL</option>
+                <option value="Discovery">Discovery</option>
+              </optgroup>
             </select>
             <svg class="select-arrow" viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M7 10l5 5 5-5z"/></svg>
           </div>
