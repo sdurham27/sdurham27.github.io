@@ -493,7 +493,7 @@ body {
 
 /* Scrollable options list */
 .cs-list {
-  max-height: 220px;
+  max-height: 300px;
   overflow-y: auto;
   padding: 4px 0;
   scrollbar-width: thin;
@@ -1615,6 +1615,28 @@ body {
 .prompt-card .cfield-select option {
   background: var(--surface);
   color: var(--text);
+}
+
+/* ── Prompt output textarea (Generate Agent Prompt modal) ────────── */
+.prompt-output-area {
+  width: 100%;
+  min-height: 420px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 0.78rem;
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+  padding: 12px 14px;
+  resize: vertical;
+  line-height: 1.55;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.prompt-output-area:focus {
+  outline: none;
+  border-color: var(--accent);
 }
 
 /* ============================================================
