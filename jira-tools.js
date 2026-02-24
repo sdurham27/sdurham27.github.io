@@ -310,14 +310,14 @@ function initCustomSelects() {
     optionData.forEach(o => {
       o.el.addEventListener('click', () => selectValue(o.value));
 
-      // Show full label as tooltip after 1.7 s if text is truncated
+      // Show full label as tooltip after 1 s if text is truncated
       o.el.addEventListener('mouseenter', () => {
         clearTimeout(_tipTimer);
         _tipTimer = setTimeout(() => {
           if (o.el.scrollWidth > o.el.clientWidth) {
             showOptionTooltip(o.el, o.label);
           }
-        }, 1700);
+        }, 1000);
       });
       o.el.addEventListener('mouseleave', hideOptionTooltip);
     });
@@ -408,6 +408,125 @@ function escapeHtml(str) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+// ── Project Custom Fields ────────────────────────────────────────────────────
+// Stores {fieldId: {name, type, value, label}} for the selected discover project.
+// Populated by loadProjectCustomFields(); consumed by buildDiscoverPrompt()
+// and the Jira ticket-create payload.
+
+let projectCustomFieldValues = {};
+
+// Called by inline oninput/onchange handlers on dynamically-rendered field inputs
+function updateCustomFieldValue(fieldId, value, label) {
+  if (projectCustomFieldValues[fieldId]) {
+    projectCustomFieldValues[fieldId].value = value;
+    projectCustomFieldValues[fieldId].label = label || value;
+  }
+}
+
+async function loadProjectCustomFields(projectKey) {
+  const container = document.getElementById('discover-custom-fields');
+  const loading   = document.getElementById('discover-fields-loading');
+  container.innerHTML = '';
+  projectCustomFieldValues = {};
+
+  const settings = getSettings();
+  if (!settings.jiraEmail || !settings.jiraToken) return;
+
+  loading.hidden = false;
+
+  try {
+    const res = await fetch(
+      `${PROXY_URL}/rest/api/3/issue/createmeta?projectKeys=${encodeURIComponent(projectKey)}&expand=projects.issuetypes.fields`,
+      { headers: jiraHeaders(settings) }
+    );
+    if (!res.ok) return;
+
+    const data    = await res.json();
+    const project = (data.projects || []).find(p => p.key === projectKey);
+    if (!project) return;
+
+    // Fields to skip — complex widgets, internal Jira mechanics, or fields
+    // already handled elsewhere (customfield_10297 = Customer Name → m-customer)
+    const SKIP_NAMES   = /sprint|epic link|epic name|story point|rank|flagged|team|business value|parent link|development|release notes?|sla|start date|actual (start|end)|customer request|feature link|fix version/i;
+    const SKIP_CUSTOMS = /gh-sprint|gh-epic|gh-ranking|com\.pyxis/i;
+    const SKIP_IDS     = new Set(['customfield_10297']);
+
+    const seen   = new Set();
+    const fields = [];
+
+    for (const issueType of (project.issuetypes || [])) {
+      for (const [fieldId, fieldDef] of Object.entries(issueType.fields || {})) {
+        if (!fieldId.startsWith('customfield_')) continue;
+        if (seen.has(fieldId) || SKIP_IDS.has(fieldId)) continue;
+
+        const schema     = fieldDef.schema || {};
+        const schemaType = schema.type;
+        const custom     = schema.custom || '';
+        const name       = fieldDef.name || fieldId;
+
+        if (SKIP_NAMES.test(name))     continue;
+        if (SKIP_CUSTOMS.test(custom)) continue;
+        // Only surface types we can render as a simple input or select
+        if (!['string', 'number', 'option'].includes(schemaType)) continue;
+
+        seen.add(fieldId);
+        fields.push({
+          id:            fieldId,
+          name,
+          type:          schemaType,
+          required:      fieldDef.required || false,
+          allowedValues: fieldDef.allowedValues || null,
+        });
+        if (fields.length >= 8) break;
+      }
+      if (fields.length >= 8) break;
+    }
+
+    if (!fields.length) return;
+
+    const rows = fields.map(f => {
+      let inputHtml;
+      if (f.type === 'option' && f.allowedValues && f.allowedValues.length) {
+        const opts = f.allowedValues.map(v =>
+          `<option value="${escapeHtml(v.id)}" data-label="${escapeHtml(v.value || v.name || '')}">${escapeHtml(v.value || v.name || '')}</option>`
+        ).join('');
+        inputHtml = `<select class="cfield-select" data-field-id="${f.id}"
+          onchange="updateCustomFieldValue('${f.id}', this.value, this.options[this.selectedIndex].dataset.label)">
+          <option value="">— optional —</option>
+          ${opts}
+        </select>`;
+      } else {
+        const inputType = f.type === 'number' ? 'number' : 'text';
+        inputHtml = `<input type="${inputType}" class="cfield-input" data-field-id="${f.id}" placeholder="optional"
+          oninput="updateCustomFieldValue('${f.id}', this.value, this.value)" />`;
+      }
+      const suffix = f.required
+        ? ' <span class="req">*</span>'
+        : ' <span class="label-hint">(optional)</span>';
+      return `<div class="field-group">
+        <label>${escapeHtml(f.name)}${suffix}</label>
+        ${inputHtml}
+      </div>`;
+    });
+
+    container.innerHTML = `<div class="custom-fields-section">
+      <div class="custom-fields-header">
+        <span class="custom-fields-title">Project Fields</span>
+        <span class="custom-fields-desc">Pre-fill values used when creating tickets for this project</span>
+      </div>
+      <div class="custom-fields-grid">${rows.join('')}</div>
+    </div>`;
+
+    for (const f of fields) {
+      projectCustomFieldValues[f.id] = { name: f.name, type: f.type, value: '', label: '' };
+    }
+  } catch (_) {
+    // Silently fail — form is still usable without project-specific fields
+  } finally {
+    loading.hidden = true;
+  }
 }
 
 // Simple ADF (Atlassian Document Format) → plain text extractor
@@ -574,6 +693,7 @@ document.getElementById('save-settings').addEventListener('click', async () => {
       displayName: me.displayName || jiraEmail,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    updateConnectNotice();
     status.textContent = `Verified as ${settings.displayName}`;
     status.className   = 'settings-status success';
 
@@ -587,6 +707,13 @@ document.getElementById('save-settings').addEventListener('click', async () => {
   }
 });
 
+// ── Connect notice: shows/hides based on whether Jira creds are saved ────────
+function updateConnectNotice() {
+  const s      = getSettings();
+  const notice = document.getElementById('discover-connect-notice');
+  if (notice) notice.hidden = !!(s.jiraEmail && s.jiraToken);
+}
+
 // Restore settings on load
 window.addEventListener('DOMContentLoaded', () => {
   // Initialize all searchable dropdowns before restoring any values
@@ -598,9 +725,33 @@ window.addEventListener('DOMContentLoaded', () => {
   if (saved.gleanToken)   document.getElementById('glean-token').value   = saved.gleanToken;
   if (saved.gleanBackend) document.getElementById('glean-backend').value = saved.gleanBackend;
 
+  // Show settings panel for first-time setup; always update connect notice
   if (!saved.jiraEmail || !saved.jiraToken) {
     document.getElementById('settings-panel').hidden = false;
   }
+  updateConnectNotice();
+
+  // "Open Settings" button inside the connect notice
+  document.getElementById('discover-open-settings-btn').addEventListener('click', () => {
+    document.getElementById('settings-panel').hidden = false;
+    document.getElementById('settings-toggle').scrollIntoView({ behavior: 'smooth' });
+  });
+
+  // Project picker → reveal extra fields + load project-specific custom fields
+  document.getElementById('discover-project').addEventListener('change', () => {
+    const projectKey  = document.getElementById('discover-project').value;
+    const extraFields = document.getElementById('discover-extra-fields');
+
+    if (!projectKey) {
+      extraFields.hidden = true;
+      document.getElementById('discover-custom-fields').innerHTML = '';
+      projectCustomFieldValues = {};
+      return;
+    }
+
+    extraFields.hidden = false;
+    loadProjectCustomFields(projectKey);
+  });
 });
 
 // ── Tab Navigation ──────────────────────────────────────────────────────────
@@ -636,7 +787,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 const TICKET_START = '---TICKET---';
 const TICKET_END   = '---END TICKET---';
 
-function buildDiscoverPrompt(days, source, customer) {
+function buildDiscoverPrompt(days, source, customer, customFields) {
   const sourceText = source === 'all'
     ? 'Gmail, Slack, Gong call recordings and notes, and internal documents'
     : { gmail: 'Gmail', slack: 'Slack', gong: 'Gong call recordings and notes', notes: 'notes and internal documents' }[source] || 'all data sources';
@@ -645,7 +796,12 @@ function buildDiscoverPrompt(days, source, customer) {
     ? `\nFocus specifically on communications and documents related to the customer: "${customer}".`
     : '';
 
-  return `You are a Jira ticket discovery assistant for BuildOps, a field service management software company. Search through the last ${days} days of ${sourceText} to identify actionable items that should become Jira tickets but likely haven't been tracked yet.${customerFilter}
+  const filledFields = Object.values(customFields || {}).filter(f => f.value);
+  const projectContext = filledFields.length
+    ? `\n\nWhen describing suggested tickets, incorporate these pre-specified project field values:\n${filledFields.map(f => `- ${f.name}: ${f.label || f.value}`).join('\n')}`
+    : '';
+
+  return `You are a Jira ticket discovery assistant for BuildOps, a field service management software company. Search through the last ${days} days of ${sourceText} to identify actionable items that should become Jira tickets but likely haven't been tracked yet.${customerFilter}${projectContext}
 
 Look for:
 1. **Bugs** – Software defects or errors reported by customers or mentioned internally
@@ -763,7 +919,7 @@ document.getElementById('discover-btn').addEventListener('click', async () => {
   showEl('discover-thinking');
 
   try {
-    const prompt = buildDiscoverPrompt(days, source, customer);
+    const prompt = buildDiscoverPrompt(days, source, customer, projectCustomFieldValues);
     const payload = {
       messages: [{ author: 'USER', fragments: [{ text: prompt }] }],
       stream:   false,
@@ -930,6 +1086,19 @@ document.getElementById('modal-create-btn').addEventListener('click', async () =
 
     if (customer) fields.customfield_10297 = customer;
     if (settings.accountId) fields.reporter = { accountId: settings.accountId };
+
+    // Include any project-specific custom fields pre-filled in the discover form
+    for (const [fieldId, cf] of Object.entries(projectCustomFieldValues)) {
+      if (!cf.value) continue;
+      if (cf.type === 'option') {
+        fields[fieldId] = { id: cf.value };
+      } else if (cf.type === 'number') {
+        const n = parseFloat(cf.value);
+        if (!isNaN(n)) fields[fieldId] = n;
+      } else {
+        fields[fieldId] = cf.value;
+      }
+    }
 
     const res  = await fetch(`${PROXY_URL}/rest/api/3/issue`, {
       method:  'POST',
